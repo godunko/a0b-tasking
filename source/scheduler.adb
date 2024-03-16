@@ -12,19 +12,22 @@ with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types;
 
+with Scheduler.Context_Switching;
+
 package body Scheduler is
 
    procedure SVC_Handler
      with Export, Convention => C, External_Name => "SVC_Handler";
 
    procedure PendSV_Handler
-     with Export, Convention => C, External_Name => "PendSV_Handler"; --, No_Return;
+     with Export, Convention => C, External_Name => "PendSV_Handler";
+   --, No_Return;
 
    procedure SysTick_Handler
      with Export, Convention => C, External_Name => "SysTick_Handler";
 
    CPU_Frequency  : constant := 520_000_000;
-   Tick_Frequency : constant := 50;
+   Tick_Frequency : constant := 1_000;
    Reload_Value   : constant := (CPU_Frequency / Tick_Frequency) - 1;
 
    estack     : constant Interfaces.Unsigned_64
@@ -32,10 +35,6 @@ package body Scheduler is
    Next_Stack : System.Address;
 
    Stack_Size : constant := 16#1000#;
-
-   type Task_Control_Block is record
-      Stack : System.Address;
-   end record;
 
    type ARMv7_Exception_Basic_Frame is record
       R0   : A0B.Types.Unsigned_32 := 0;
@@ -119,8 +118,8 @@ package body Scheduler is
       S31      : A0B.Types.Unsigned_32 := 31;
    end record with Object_Size => 800, Alignment => 4;
 
-   Current_Task : Task_Control_Block with Volatile;
-   --  Switch       : Boolean := False with Volatile;
+   --  Current_Task : not null Task_Control_Block_Access :=
+   --    Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
 
    INITIAL_EXC_RETURN : constant := 16#FFFF_FFFD#;
    --  Exception return value for the Link Register to run thread code for
@@ -142,6 +141,10 @@ package body Scheduler is
    procedure Initialize is
    begin
       Next_Stack := estack'Address - Stack_Size;
+
+      for J in Task_Table'Range loop
+         Task_Table (J) := (Stack => System.Null_Address, Id => J);
+      end loop;
    end Initialize;
 
    ----------------------
@@ -176,7 +179,8 @@ package body Scheduler is
      array (A0B.Types.Unsigned_32 range <>) of A0B.Types.Unsigned_32;
 
    procedure Initialize_Thread
-     (Thread : Thread_Subprogram;
+     (TCB    : in out Task_Control_Block;
+      Thread : Thread_Subprogram;
       Stack  : System.Address)
    is
       use type A0B.Types.Unsigned_32;
@@ -230,7 +234,7 @@ package body Scheduler is
 
       Context_Switch_Frame (Context_Switch_LR_Index) := INITIAL_EXC_RETURN;
 
-      Current_Task.Stack := Context_Switch_Frame'Address;
+      TCB.Stack := Context_Switch_Frame'Address;
       --  Switch             := True;
       --  CONTROL := Get_CONTROL;
       --  System.Machine_Code.Asm
@@ -272,60 +276,49 @@ package body Scheduler is
       --     Volatile => True);
    end Initialize_Thread;
 
+   --  procedure Reschedule with Inline => False;
+   procedure Reschedule is
+      use type System.Address;
+
+      pragma Suppress (All_Checks);
+      --  use type A0B.Types.Unsigned_32;
+
+      --  C : A0B.Types.Unsigned_32;
+      C : Integer;
+
+   begin
+      --  for J in Task_Table'Range loop
+      --     if Current_Task = Task_Table (J)'Access then
+      --        C := J + 1;
+
+      --        exit;
+      --     end if;
+      --  end loop;
+
+      C := Current_Task.Id;
+
+      loop
+         C := @ + 1;
+
+         if C > Task_Table'Last then
+            C := Task_Table'First;
+         end if;
+
+         exit when Task_Table (C).Stack /= System.Null_Address;
+      end loop;
+
+      Current_Task := Task_Table (C)'Access;
+   end Reschedule;
+
    --------------------
    -- PendSV_Handler --
    --------------------
 
    procedure PendSV_Handler is
-      LF    : constant Character := ASCII.LF;
-
-      --  Stack : System.Address := Current_Task.Stack;
-      Stack : System.Address;
-
    begin
-      --  Get Process Stack Pointer register. It is position of the
-      --  interrupted task: PendSV has lowerest priority level and can't
-      --  preempt any interrupts.
-
-      Stack := Get_PSP;
-
-      --  Store S16-S31 registers when necessary, then store R4-R11 and LR
-      --  registers.
-
-      System.Machine_Code.Asm
-        (Template =>
-           "tst lr, #0x10" & LF
-           & "it eq" & LF
-           & "vstmdbeq %0!, {s16-s31}" & LF
-           & "stmdb %0!, {r4-r11, lr}",
-         Outputs  => System.Address'Asm_Output ("=r", Stack),
-         Inputs   => System.Address'Asm_Input ("r", Stack),
-         --  Clobber  => "memory",
-         Volatile => True);
-
-      --  Save stack pointer of the currently running task.
-
-      Current_Task.Stack := Stack;
-
-      --  XXX Schedule next task.
-
-      --  Load stack pointer of the task to be run.
-
-      Stack := Current_Task.Stack;
-
-      --  Restore R4-R11, LR (and S16-S31 when necessary) registers, setup
-      --  PSP register and return.
-
-      System.Machine_Code.Asm
-        (Template =>
-           "ldmia %0!, {r4-r11, lr}" & LF
-           & "tst lr, #0x10" & LF
-           & "it eq" & LF
-           & "vldmiaeq %0!, {s16-s31}",
-         Outputs  => System.Address'Asm_Output ("=r", Stack),
-         Inputs   => System.Address'Asm_Input ("r", Stack),
-         Volatile => True);
-      Set_PSP (Stack);
+      Context_Switching.Save_Context;
+      Reschedule;
+      Context_Switching.Restore_Context;
    end PendSV_Handler;
 
    ---------------------
@@ -333,9 +326,16 @@ package body Scheduler is
    ---------------------
 
    procedure Register_Thread (Thread : Thread_Subprogram) is
+      use type System.Address;
+
    begin
-      Initialize_Thread (Thread, Next_Stack);
-      null;
+      for T of Task_Table loop
+         if T.Stack = System.Null_Address then
+            Initialize_Thread (T, Thread, Next_Stack);
+
+            exit;
+         end if;
+      end loop;
 
       Next_Stack := @ - Stack_Size;
    end Register_Thread;
@@ -388,18 +388,7 @@ package body Scheduler is
       Set_MSP (estack'Address);
       --  Reset master stack to the initial value.
 
-      --  Restore R4-R11 registers, setup PSP register and return.
-
-      System.Machine_Code.Asm
-        (Template => "ldmia %0!, {r4-r11, lr}",
-         --    "ldmia %0!, {r4-r11, lr}" & LF
-         --    & "tst lr, #0x10" & LF
-         --    & "it eq" & LF
-         --    & "vldmiaeq %0!, {s16-s31}",
-         Outputs  => System.Address'Asm_Output ("=r", Stack),
-         Inputs   => System.Address'Asm_Input ("r", Stack),
-         Volatile => True);
-      Set_PSP (Stack);
+      Context_Switching.Restore_Context;
    end SVC_Handler;
 
    ---------------------
