@@ -13,15 +13,9 @@ with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types;
 
 with Scheduler.Context_Switching;
+with Scheduler.interrupt_Handling;
 
 package body Scheduler is
-
-   procedure SVC_Handler
-     with Export, Convention => C, External_Name => "SVC_Handler";
-
-   procedure PendSV_Handler
-     with Export, Convention => C, External_Name => "PendSV_Handler";
-   --, No_Return;
 
    procedure SysTick_Handler
      with Export, Convention => C, External_Name => "SysTick_Handler";
@@ -30,8 +24,6 @@ package body Scheduler is
    Tick_Frequency : constant := 1_000;
    Reload_Value   : constant := (CPU_Frequency / Tick_Frequency) - 1;
 
-   estack     : constant Interfaces.Unsigned_64
-     with Import, Convention => C, External_Name => "_estack";
    Next_Stack : System.Address;
 
    Stack_Size : constant := 16#1000#;
@@ -310,17 +302,6 @@ package body Scheduler is
       Current_Task := Task_Table (C)'Access;
    end Reschedule;
 
-   --------------------
-   -- PendSV_Handler --
-   --------------------
-
-   procedure PendSV_Handler is
-   begin
-      Context_Switching.Save_Context;
-      Reschedule;
-      Context_Switching.Restore_Context;
-   end PendSV_Handler;
-
    ---------------------
    -- Register_Thread --
    ---------------------
@@ -374,22 +355,6 @@ package body Scheduler is
          Volatile => True);
       --  Call SVC to start first thread. It never returns.
    end Run;
-
-   -----------------
-   -- SVC_Handler --
-   -----------------
-
-   procedure SVC_Handler is
-      Stack : System.Address := Current_Task.Stack;
-
-   begin
-      --  Start first task.
-
-      Set_MSP (estack'Address);
-      --  Reset master stack to the initial value.
-
-      Context_Switching.Restore_Context;
-   end SVC_Handler;
 
    ---------------------
    -- SysTick_Handler --

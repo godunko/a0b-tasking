@@ -36,4 +36,7 @@ private
    Current_Task : not null Task_Control_Block_Access :=
      Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
 
+   estack     : constant Interfaces.Unsigned_64
+     with Import, Convention => C, External_Name => "_estack";
+
 end Scheduler;
