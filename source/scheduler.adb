@@ -3,7 +3,6 @@ pragma Restrictions (No_Elaboration_Code);
 
 pragma Ada_2022;
 
-with Ada.Unchecked_Conversion;
 with System.Machine_Code;
 with System.Storage_Elements;         use System.Storage_Elements;
 
@@ -13,7 +12,7 @@ with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types;
 
 with Scheduler.Context_Switching;
-with Scheduler.interrupt_Handling;
+with Scheduler.Interrupt_Handling;
 
 package body Scheduler is
 
@@ -27,104 +26,6 @@ package body Scheduler is
    Next_Stack : System.Address;
 
    Stack_Size : constant := 16#1000#;
-
-   type ARMv7_Exception_Basic_Frame is record
-      R0   : A0B.Types.Unsigned_32 := 0;
-      R1   : A0B.Types.Unsigned_32 := 0;
-      R2   : A0B.Types.Unsigned_32 := 0;
-      R3   : A0B.Types.Unsigned_32 := 0;
-      R12  : A0B.Types.Unsigned_32 := 0;
-      LR   : A0B.Types.Unsigned_32 := 16#FFFFFFFF#;
-      PC   : System.Address;
-      xPSR : A0B.Types.Unsigned_32 := 16#0100_0000#;  --  Thumb mode
-   end record with Object_Size => 256, Alignment => 8;
-
-   type ARMv7_Exception_Extended_Frame is record
-      R0       : A0B.Types.Unsigned_32 := 0;
-      R1       : A0B.Types.Unsigned_32 := 1;
-      R2       : A0B.Types.Unsigned_32 := 2;
-      R3       : A0B.Types.Unsigned_32 := 3;
-      R12      : A0B.Types.Unsigned_32 := 12;
-      LR       : A0B.Types.Unsigned_32 := 16#FFFFFFFF#;
-      PC       : System.Address;
-      xPSR     : A0B.Types.Unsigned_32 := 16#0100_0000#;  --  Thumb mode
-      S0       : A0B.Types.Unsigned_32 := 0;
-      S1       : A0B.Types.Unsigned_32 := 1;
-      S2       : A0B.Types.Unsigned_32 := 2;
-      S3       : A0B.Types.Unsigned_32 := 3;
-      S4       : A0B.Types.Unsigned_32 := 4;
-      S5       : A0B.Types.Unsigned_32 := 5;
-      S6       : A0B.Types.Unsigned_32 := 6;
-      S7       : A0B.Types.Unsigned_32 := 7;
-      S8       : A0B.Types.Unsigned_32 := 8;
-      S9       : A0B.Types.Unsigned_32 := 9;
-      S10      : A0B.Types.Unsigned_32 := 10;
-      S11      : A0B.Types.Unsigned_32 := 11;
-      S12      : A0B.Types.Unsigned_32 := 12;
-      S13      : A0B.Types.Unsigned_32 := 13;
-      S14      : A0B.Types.Unsigned_32 := 14;
-      S15      : A0B.Types.Unsigned_32 := 15;
-      FPSCR    : A0B.Types.Unsigned_32 := 0;
-      Reserved : A0B.Types.Unsigned_32 := 0;
-   end record with Object_Size => 832, Alignment => 8;
-
-   type Context_Switch_Basic_Frame is record
-      R4       : A0B.Types.Unsigned_32 := 0;
-      R5       : A0B.Types.Unsigned_32 := 0;
-      R6       : A0B.Types.Unsigned_32 := 0;
-      R7       : A0B.Types.Unsigned_32 := 0;
-      R8       : A0B.Types.Unsigned_32 := 0;
-      R9       : A0B.Types.Unsigned_32 := 0;
-      R10      : A0B.Types.Unsigned_32 := 0;
-      R11      : A0B.Types.Unsigned_32 := 0;
-      LR       : A0B.Types.Unsigned_32 := 16#FFFF_FFFD#;
-      --  Return to thread mode, PSP, no FPU state
-   end record with Object_Size => 288, Alignment => 4;
-
-   type Context_Switch_Extended_Frame is record
-      R4       : A0B.Types.Unsigned_32 := 4;
-      R5       : A0B.Types.Unsigned_32 := 5;
-      R6       : A0B.Types.Unsigned_32 := 6;
-      R7       : A0B.Types.Unsigned_32 := 7;
-      R8       : A0B.Types.Unsigned_32 := 8;
-      R9       : A0B.Types.Unsigned_32 := 9;
-      R10      : A0B.Types.Unsigned_32 := 10;
-      R11      : A0B.Types.Unsigned_32 := 11;
-      LR       : A0B.Types.Unsigned_32 := 16#FFFF_FFED#;
-      --  Return to thread mode, PSP, restore FPU state
-      S16      : A0B.Types.Unsigned_32 := 16;
-      S17      : A0B.Types.Unsigned_32 := 17;
-      S18      : A0B.Types.Unsigned_32 := 18;
-      S19      : A0B.Types.Unsigned_32 := 19;
-      S20      : A0B.Types.Unsigned_32 := 20;
-      S21      : A0B.Types.Unsigned_32 := 21;
-      S22      : A0B.Types.Unsigned_32 := 22;
-      S23      : A0B.Types.Unsigned_32 := 23;
-      S24      : A0B.Types.Unsigned_32 := 24;
-      S25      : A0B.Types.Unsigned_32 := 25;
-      S26      : A0B.Types.Unsigned_32 := 26;
-      S27      : A0B.Types.Unsigned_32 := 27;
-      S28      : A0B.Types.Unsigned_32 := 28;
-      S29      : A0B.Types.Unsigned_32 := 29;
-      S30      : A0B.Types.Unsigned_32 := 30;
-      S31      : A0B.Types.Unsigned_32 := 31;
-   end record with Object_Size => 800, Alignment => 4;
-
-   --  Current_Task : not null Task_Control_Block_Access :=
-   --    Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
-
-   INITIAL_EXC_RETURN : constant := 16#FFFF_FFFD#;
-   --  Exception return value for the Link Register to run thread code for
-   --  the first time. It means that processor will returns to Thread Mode,
-   --  to use Process Stack Pointer, without restore of the FPU context.
-
-   INITIAL_xPSR_VALUE : constant := 16#0100_0000#;
-   --  Initial value of the xPSR register for starting thread. It means that
-   --  Thumb instructions mode is enabled.
-
-   LOCKUP_THREAD_RETURN : constant := 16#FFFF_FFFF#;
-   --  Return value for the Link Register to switch processor into lockup
-   --  state when thread subprogram returns.
 
    ----------------
    -- Initialize --
@@ -158,117 +59,22 @@ package body Scheduler is
       --  ??? Configure lazy FPU context save when FPU is enabled.
    end Initialize_Timer;
 
-   ARMv7_Basic_Frame_Length             : constant := 8;
-   ARMv7_Extended_Frame_Length          : constant := 26;
-   Context_Switch_Basic_Frame_Length    : constant := 9;
-   Context_Switch_Extended_Frame_Length : constant := 25;
-   ARMv7M_LR_Index                      : constant := 5;
-   ARMv7M_PS_Index                      : constant := 6;
-   ARMv7M_xPSR_Index                    : constant := 7;
-   Context_Switch_LR_Index              : constant := 8;
-
-   type Unsigned_32_Array is
-     array (A0B.Types.Unsigned_32 range <>) of A0B.Types.Unsigned_32;
+   -----------------------
+   -- Initialize_Thread --
+   -----------------------
 
    procedure Initialize_Thread
      (TCB    : in out Task_Control_Block;
       Thread : Thread_Subprogram;
-      Stack  : System.Address)
-   is
-      use type A0B.Types.Unsigned_32;
-
-      Exception_Basic_Frame_Size      : constant :=
-        ARMv7_Basic_Frame_Length
-          * A0B.Types.Unsigned_32'Max_Size_In_Storage_Elements;
-      Context_Switch_Basic_Frame_Size : constant :=
-        Context_Switch_Basic_Frame_Length
-          * A0B.Types.Unsigned_32'Max_Size_In_Storage_Elements;
-
-      --  Save_SP : System.Address;
-      --   Save_
-      --  CONTROL : CONTROL_Register;
-
-      function To_Address is
-        new Ada.Unchecked_Conversion (Thread_Subprogram, System.Address);
-
-      function To_Unsigned_32 is
-        new Ada.Unchecked_Conversion
-              (Thread_Subprogram, A0B.Types.Unsigned_32);
-
-      --  Exception_Frame : ARMv7_Exception_Extended_Frame :=
-      --    (PC     =>   --  Thread'Address,
-      --     To_Address (Thread),
-      --     others => <>)
-      --    with Address =>
-      --      Stack
-      --        - ARMv7_Exception_Extended_Frame'Max_Size_In_Storage_Elements;
-      --  Context_Switch_Frame : Context_Switch_Extended_Frame :=
-      --    (others => <>)
-      --    with Address =>
-      --      Stack
-      --        - ARMv7_Exception_Extended_Frame'Max_Size_In_Storage_Elements
-      --        - Context_Switch_Extended_Frame'Max_Size_In_Storage_Elements;
-
-      Exception_Frame      : Unsigned_32_Array (0 .. ARMv7_Basic_Frame_Length - 1)
-        with Address =>
-          Stack - Exception_Basic_Frame_Size;
-      Context_Switch_Frame : Unsigned_32_Array (0 .. Context_Switch_Basic_Frame_Length - 1)
-        with Address =>
-          Stack - Exception_Basic_Frame_Size - Context_Switch_Basic_Frame_Size;
-
+      Stack  : System.Address) is
    begin
-      Exception_Frame      := (others => 0);
-      Context_Switch_Frame := (others => 0);
-
-      Exception_Frame (ARMv7M_LR_Index)   := LOCKUP_THREAD_RETURN;
-      Exception_Frame (ARMv7M_PS_Index)   := To_Unsigned_32 (Thread);
-      Exception_Frame (ARMv7M_xPSR_Index) := INITIAL_xPSR_VALUE;
-
-      Context_Switch_Frame (Context_Switch_LR_Index) := INITIAL_EXC_RETURN;
-
-      TCB.Stack := Context_Switch_Frame'Address;
-      --  Switch             := True;
-      --  CONTROL := Get_CONTROL;
-      --  System.Machine_Code.Asm
-      --    (Template => "mov %0, sp",
-      --     Outputs  => System.Address'Asm_Output ("=r", Save_SP));
-
-      --  --  System.Machine_Code.Asm
-      --  --    (Template => "msr control, %0" & ASCII.LF,
-      --  --     Outputs  => CONTROL_Register'Asm_Output ("=r", CONTROL),
-      --  --     Volatile => True);
-      --  CONTROL.SPSEL := True;
-
-      --  Set_PSP (Stack);
-      --  Set_CONTROL (CONTROL);
-      --  Instruction_Synchronization_Barrier;
-      --  --  System.Machine_Code.Asm
-      --  --  --    (Template => "mov sp, %0",
-      --  --    (Template => "mrs %0, msp",
-      --  --     Inputs   => System.Address'Asm_Input ("r", Stack),
-      --  --     Clobber  => "memory",
-      --  --     Volatile => True);
-      --  --  System.Machine_Code.Asm
-      --  --    (Template => "mrs control, %0",
-      --  --     Inputs   => CONTROL_Register'Asm_Input ("r", CONTROL),
-      --  --     Clobber  => "memory",
-      --  --     Volatile => True);
-      --  --  System.Machine_Code.Asm
-      --  --    (Template => "msr %0, control",
-      --  --     Outputs  => CONTROL_Register'Asm_Output ("=r", CONTROL));
-
-      --  System.Machine_Code.Asm
-      --    (Template => "svc 0",
-      --     Volatile => True);
-
-      --  System.Machine_Code.Asm
-      --    (Template => "mov sp, %0",
-      --     Inputs   => System.Address'Asm_Input ("r", Save_SP),
-      --     Clobber  => "memory",
-      --     Volatile => True);
+      TCB.Stack := Context_Switching.Initialize_Stack (Thread, Stack);
    end Initialize_Thread;
 
-   --  procedure Reschedule with Inline => False;
+   ----------------
+   -- Reschedule --
+   ----------------
+
    procedure Reschedule is
       use type System.Address;
 
