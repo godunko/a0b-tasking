@@ -44,6 +44,7 @@ private
       Id     : Integer;
       --  Stack  : System.Address := System.Null_Address;
       --  Unused : Boolean := True;
+      Time   : Unsigned_32;
    end record;
 
    type Task_Control_Block_Access is access all Task_Control_Block;

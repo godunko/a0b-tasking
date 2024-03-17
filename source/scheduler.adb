@@ -36,16 +36,34 @@ package body Scheduler is
    estack : constant Interfaces.Unsigned_64
      with Import, Convention => C, External_Name => "_estack";
 
+   procedure Idle_Thread;
+   --  Thread that run idle loop.
+
+   procedure Initialize_Thread
+     (TCB    : in out Task_Control_Block;
+      Thread : Thread_Subprogram;
+      Stack  : System.Address);
+
    -----------------
    -- Delay_Until --
    -----------------
 
    procedure Delay_Until (Time_Stamp : Unsigned_32) is
    begin
-      while Clock < Time_Stamp loop
-         null;
-      end loop;
+      Current_Task.Time := Time_Stamp;
+      SCB.ICSR := (PENDSVSET => True, others => <>);
    end Delay_Until;
+
+   -----------------
+   -- Idle_Thread --
+   -----------------
+
+   procedure Idle_Thread is
+   begin
+      loop
+         Wait_For_Interrupt;
+      end loop;
+   end Idle_Thread;
 
    ----------------
    -- Initialize --
@@ -56,8 +74,17 @@ package body Scheduler is
       Next_Stack := estack'Address - Stack_Size;
 
       for J in Task_Table'Range loop
-         Task_Table (J) := (Stack => System.Null_Address, Id => J);
+         Task_Table (J) :=
+           (Stack => System.Null_Address,
+            Id    => J,
+            Time  => 0);
       end loop;
+
+      Initialize_Thread
+        (Task_Table (Task_Table'First), Idle_Thread'Access, Next_Stack);
+
+      Next_Stack := @ - Stack_Size;
+      --  ??? Idle thread doesn't require so much stack.
    end Initialize;
 
    ----------------------
@@ -97,7 +124,8 @@ package body Scheduler is
       --  use type A0B.Types.Unsigned_32;
 
       --  C : A0B.Types.Unsigned_32;
-      C : Integer;
+      C : constant Integer := Current_Task.Id;
+      N : Integer          := C;
 
    begin
       --  for J in Task_Table'Range loop
@@ -108,19 +136,33 @@ package body Scheduler is
       --     end if;
       --  end loop;
 
-      C := Current_Task.Id;
+      --  C := Current_Task.Id;
 
       loop
-         C := @ + 1;
+         N := @ + 1;
 
-         if C > Task_Table'Last then
-            C := Task_Table'First;
+         if N > Task_Table'Last then
+            N := Task_Table'First + 1;  --  First entry is idle thread.
+
+            exit when C = Task_Table'First;
          end if;
 
-         exit when Task_Table (C).Stack /= System.Null_Address;
+         exit when N = C;
+
+         exit when
+           Task_Table (N).Stack /= System.Null_Address
+             and then (Task_Table (N).Time = 0
+                         or Task_Table (N).Time <= Clock);
       end loop;
 
-      Current_Task := Task_Table (C)'Access;
+      if Task_Table (N).Time /= 0 and Task_Table (N).Time > Clock then
+         Current_Task := Task_Table (Task_Table'First)'Access;
+         --  Run idle task
+
+      else
+         Task_Table (N).Time := 0;
+         Current_Task := Task_Table (N)'Access;
+      end if;
    end Reschedule;
 
    ---------------------
