@@ -1,3 +1,8 @@
+--
+--  Copyright (C) 2024, Vadim Godunko <vgodunko@gmail.com>
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
 
 --  This package provides utilities for low level task context switching on
 --  ARMv7-M CPUs (Cortex-M3/M4/M7 with/without FPU extension).
