@@ -9,7 +9,7 @@ with System.Storage_Elements;         use System.Storage_Elements;
 with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
-with A0B.Types;
+with A0B.Types.GCC_Builtins;          use A0B.Types.GCC_Builtins;
 
 with Scheduler.Context_Switching;
 with Scheduler.Interrupt_Handling;
@@ -27,17 +27,45 @@ package body Scheduler is
 
    Stack_Size : constant := 16#1000#;
 
+   Lowerest_Level      : A0B.ARMv7M.Priority_Value := 255;
+   Lower_Latency_Level : A0B.ARMv7M.Priority_Value;
+   Service_Call_Level  : A0B.ARMv7M.Priority_Value;
+   --  Priority values of lowerest supported level (used for PendSV and
+   --  SysTick handlers), lower latency handlers, and service call handler.
+
    ----------------
    -- Initialize --
    ----------------
 
    procedure Initialize is
+      use type A0B.Types.Unsigned_8;
+
+      Aux   : A0B.Types.Integer_32;
+      Aux_U : A0B.Types.Unsigned_8;
+
    begin
       Next_Stack := estack'Address - Stack_Size;
 
       for J in Task_Table'Range loop
          Task_Table (J) := (Stack => System.Null_Address, Id => J);
       end loop;
+
+      --  Detect number of priority bits supported by processor and compute
+      --  actual values of the priority values. Code is based on fact that
+      --  BASEPRI register always return zero value for unsupported priority
+      --  level bits.
+
+      Set_BASEPRI (255);
+
+      Aux := A0B.Types.Integer_32 (Get_BASEPRI);
+      Lowerest_Level := A0B.ARMv7M.Priority_Value (Aux);
+      Aux_U := A0B.Types.Unsigned_8 (ffs (Aux));
+      Aux_U := A0B.Types.Shift_Left (1, Integer (Aux_U - 1));
+      Lower_Latency_Level := A0B.ARMv7M.Priority_Value (Aux_U);
+      Aux_U := @ * 2;
+      Service_Call_Level := A0B.ARMv7M.Priority_Value (Aux_U);
+
+      Set_BASEPRI (0);
    end Initialize;
 
    ----------------------
