@@ -55,8 +55,16 @@ package body A0B.Tasking is
 
    procedure Delay_Until (Time_Stamp : Unsigned_32) is
    begin
+      --  Update task control block.
+
       Current_Task.Time := Time_Stamp;
+
+      --  Request PendVS exception. Do synchronization after modification of
+      --  the register in the System Control Space to avoid side effects.
+
       SCB.ICSR := (PENDSVSET => True, others => <>);
+      Data_Synchronization_Barrier;
+      Instruction_Synchronization_Barrier;
    end Delay_Until;
 
    -----------------
