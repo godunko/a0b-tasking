@@ -20,7 +20,9 @@ package body Scheduler.Interrupt_Handling is
    procedure PendSV_Handler is
    begin
       Context_Switching.Save_Context;
+      Set_BASEPRI (SVCall_Priority);
       Reschedule;
+      Set_BASEPRI (0);
       Context_Switching.Restore_Context;
    end PendSV_Handler;
 
@@ -31,9 +33,6 @@ package body Scheduler.Interrupt_Handling is
    procedure SVC_Handler is
    begin
       --  Start first task.
-
-      Set_MSP (estack'Address);
-      --  Reset master stack to the initial value.
 
       Context_Switching.Restore_Context;
    end SVC_Handler;

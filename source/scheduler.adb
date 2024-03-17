@@ -9,7 +9,7 @@ with System.Storage_Elements;         use System.Storage_Elements;
 with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
-with A0B.Types.GCC_Builtins;          use A0B.Types.GCC_Builtins;
+with A0B.Types;
 
 with Scheduler.Context_Switching;
 with Scheduler.Interrupt_Handling;
@@ -27,45 +27,26 @@ package body Scheduler is
 
    Stack_Size : constant := 16#1000#;
 
-   Lowerest_Level      : A0B.ARMv7M.Priority_Value := 255;
-   Lower_Latency_Level : A0B.ARMv7M.Priority_Value;
-   Service_Call_Level  : A0B.ARMv7M.Priority_Value;
-   --  Priority values of lowerest supported level (used for PendSV and
-   --  SysTick handlers), lower latency handlers, and service call handler.
+   function To_Priority_Value
+     (Item : Priority) return A0B.ARMv7M.Priority_Value is
+       (A0B.ARMv7M.Priority_Value
+         (Priority (A0B.ARMv7M.Priority_Value'Last) - Item));
+   --  Conversion from abstract priority level to ARM priority value.
+
+   estack : constant Interfaces.Unsigned_64
+     with Import, Convention => C, External_Name => "_estack";
 
    ----------------
    -- Initialize --
    ----------------
 
    procedure Initialize is
-      use type A0B.Types.Unsigned_8;
-
-      Aux   : A0B.Types.Integer_32;
-      Aux_U : A0B.Types.Unsigned_8;
-
    begin
       Next_Stack := estack'Address - Stack_Size;
 
       for J in Task_Table'Range loop
          Task_Table (J) := (Stack => System.Null_Address, Id => J);
       end loop;
-
-      --  Detect number of priority bits supported by processor and compute
-      --  actual values of the priority values. Code is based on fact that
-      --  BASEPRI register always return zero value for unsupported priority
-      --  level bits.
-
-      Set_BASEPRI (255);
-
-      Aux := A0B.Types.Integer_32 (Get_BASEPRI);
-      Lowerest_Level := A0B.ARMv7M.Priority_Value (Aux);
-      Aux_U := A0B.Types.Unsigned_8 (ffs (Aux));
-      Aux_U := A0B.Types.Shift_Left (1, Integer (Aux_U - 1));
-      Lower_Latency_Level := A0B.ARMv7M.Priority_Value (Aux_U);
-      Aux_U := @ * 2;
-      Service_Call_Level := A0B.ARMv7M.Priority_Value (Aux_U);
-
-      Set_BASEPRI (0);
    end Initialize;
 
    ----------------------
@@ -76,15 +57,10 @@ package body Scheduler is
    begin
       SYST.RVR.RELOAD    := Reload_Value;
       SYST.CVR.CURRENT   := 0;
-      SYST.CSR := (ENABLE         => True,  --  Enable timer
-                   TICKINT        => True,  --  Enable interrupt
-                   CLKSOURCE      => True,  --  Use CPU clock
-                  --   CLKSOURCE      => False,
-                  --   COUNTFLAG      => <>,
+      SYST.CSR := (ENABLE    => True,  --  Enable timer
+                   TICKINT   => True,  --  Enable interrupt
+                   CLKSOURCE => True,  --  Use CPU clock
                    others    => <>);
-      --  ??? Setup NVIC priority ???
-
-      --  ??? Configure lazy FPU context save when FPU is enabled.
    end Initialize_Timer;
 
    -----------------------
@@ -164,25 +140,56 @@ package body Scheduler is
 
       CPACR   : constant SCB_CPACR_Register := SCB.CPACR;
       Has_FPU : constant Boolean := (CPACR.CP10 /= 0) and (CPACR.CP11 /= 0);
-      CONTROL : CONTROL_Register := Get_CONTROL;
 
    begin
       Initialize_Timer;
 
-      if Has_FPU then
-         CONTROL.FPCA := False;
-         --  Clear FP execution bit, to use basic format of the exception
-         --  frame. It is expected by SVC call to run the first task.
+      SCB.SHPR (A0B.ARMv7M.SVCall_Exception)  := SVCall_Priority;
+      SCB.SHPR (A0B.ARMv7M.PendSV_Exception)  := PendSV_Priority;
+      SCB.SHPR (A0B.ARMv7M.SysTick_Exception) := SysTick_Priority;
+      --  Set priorities of system exceptions.
 
-         SCB_FP.FPCCR.LSPEN := True;
-         --  Enable lazy save of the FPU context on interrupts.
+      if Has_FPU then
+         declare
+            CONTROL : CONTROL_Register := Get_CONTROL;
+
+         begin
+            CONTROL.FPCA := False;
+            --  Clear FP execution bit, to use basic format of the exception
+            --  frame. It is expected by SVC call to run the first task.
+
+            Set_CONTROL (CONTROL);
+
+            SCB_FP.FPCCR.LSPEN := True;
+            --  Enable lazy save of the FPU context on interrupts.
+         end;
       end if;
 
-      --  CONTROL.nPRIV := True;  --  Switch to unprivileged mode.
-      --  XXX How to switch to unprivileged mode?
-      Set_CONTROL (CONTROL);
+      --  Content of the master stack is not needed anymore, so reset MSP to
+      --  the initial value. All preempted and pending interrupts should be
+      --  completed first to be able to do this safely, so first reset
+      --  priority boosting and enable all interrupts/faults.
+
+      Set_BASEPRI (0);
       Instruction_Synchronization_Barrier;
-      --  Required after change of the CONTROL register.
+      --  Reset priority boosting and ensure that priority is applied.
+
+      System.Machine_Code.Asm
+        (Template => "cpsie i",
+         Volatile => True);
+      System.Machine_Code.Asm
+        (Template => "cpsie f",
+         Volatile => True);
+      --  Enable interrupts and faults.
+
+      Set_MSP (estack'Address);
+      --  Reset master stack to the initial value. It is safe do to here:
+      --   - immidiately before the call of SVC to start first thread, so it
+      --     will not be modified or older stored values are used by the
+      --     current subprogram;
+      --   - processor runs in Thread Mode without priority boosting, so
+      --     there is no preempted exceptions at this point, thus nothing
+      --     outside of this subprogram use this code.
 
       System.Machine_Code.Asm
         (Template => "svc 0",
