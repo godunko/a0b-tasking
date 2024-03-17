@@ -1,0 +1,22 @@
+--
+--  Copyright (C) 2024, Vadim Godunko <vgodunko@gmail.com>
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
+with "a0b_common";
+with "a0b_armv7m";
+
+project A0B_Tasking_ARMv7M is
+
+   for Target use A0B_ARMv7M'Target;
+   for Runtime ("Ada") use A0B_ARMv7M'Runtime ("Ada");
+
+   for Source_Dirs use ("../source");
+   for Object_Dir use "../.objs/" & A0B_Common.Object_Dir_Suffix;
+
+   package Compiler is
+      for Switches ("Ada") use A0B_Common.Compiler_Switches_Ada;
+   end Compiler;
+
+end A0B_Tasking_ARMv7M;
