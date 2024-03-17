@@ -35,6 +35,8 @@ package Scheduler is
 
    procedure Register_Thread (Thread : Thread_Subprogram);
 
+   procedure Delay_Until (Time_Stamp : Unsigned_32);
+
 private
 
    type Task_Control_Block is record

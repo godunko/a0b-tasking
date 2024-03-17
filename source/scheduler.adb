@@ -36,6 +36,17 @@ package body Scheduler is
    estack : constant Interfaces.Unsigned_64
      with Import, Convention => C, External_Name => "_estack";
 
+   -----------------
+   -- Delay_Until --
+   -----------------
+
+   procedure Delay_Until (Time_Stamp : Unsigned_32) is
+   begin
+      while Clock < Time_Stamp loop
+         null;
+      end loop;
+   end Delay_Until;
+
    ----------------
    -- Initialize --
    ----------------
