@@ -11,10 +11,10 @@ with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types;
 
-with Scheduler.Context_Switching;
-with Scheduler.Interrupt_Handling;
+with A0B.Tasking.Context_Switching;
+with A0B.Tasking.Interrupt_Handling;
 
-package body Scheduler is
+package body A0B.Tasking is
 
    procedure SysTick_Handler
      with Export, Convention => C, External_Name => "SysTick_Handler";
@@ -265,4 +265,4 @@ package body Scheduler is
       Clock := @ + 1;
    end SysTick_Handler;
 
-end Scheduler;
+end A0B.Tasking;

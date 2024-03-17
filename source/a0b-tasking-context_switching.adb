@@ -9,7 +9,7 @@ with System.Machine_Code;
 with A0B.ARMv7M.CMSIS;        use A0B.ARMv7M.CMSIS;
 with A0B.Types;               use A0B.Types;
 
-package body Scheduler.Context_Switching is
+package body A0B.Tasking.Context_Switching is
 
    NL : constant Character := ASCII.LF;
    --  New line sequence for Asm templates.
@@ -216,4 +216,4 @@ package body Scheduler.Context_Switching is
       Current_Task.Stack := Stack;
    end Save_Context;
 
-end Scheduler.Context_Switching;
+end A0B.Tasking.Context_Switching;

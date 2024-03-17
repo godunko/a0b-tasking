@@ -7,7 +7,7 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-private package Scheduler.Context_Switching is
+private package A0B.Tasking.Context_Switching is
 
    function Initialize_Stack
      (Thread : Thread_Subprogram;
@@ -20,4 +20,4 @@ private package Scheduler.Context_Switching is
    procedure Restore_Context;
    --  Restore task context and jump to the task's code.
 
-end Scheduler.Context_Switching;
+end A0B.Tasking.Context_Switching;

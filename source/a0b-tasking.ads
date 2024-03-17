@@ -7,7 +7,7 @@ with Interfaces; use Interfaces;
 
 private with A0B.ARMv7M;
 
-package Scheduler is
+package A0B.Tasking is
 
    type Priority is mod 2 ** 8;
    --  Task/interrupt of priority level. Zero means lowerest priority.
@@ -60,4 +60,4 @@ private
    SVCall_Priority  : constant A0B.ARMv7M.Priority_Value := 127;
    --  Priority values of PendSV, SysTick and SVCall exceptions.
 
-end Scheduler;
+end A0B.Tasking;

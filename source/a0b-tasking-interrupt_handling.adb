@@ -3,9 +3,9 @@ pragma Restrictions (No_Elaboration_Code);
 
 with A0B.ARMv7M.CMSIS; use A0B.ARMv7M.CMSIS;
 
-with Scheduler.Context_Switching;
+with A0B.Tasking.Context_Switching;
 
-package body Scheduler.Interrupt_Handling is
+package body A0B.Tasking.Interrupt_Handling is
 
    procedure PendSV_Handler
      with Export, Convention => C, External_Name => "PendSV_Handler";
@@ -37,4 +37,4 @@ package body Scheduler.Interrupt_Handling is
       Context_Switching.Restore_Context;
    end SVC_Handler;
 
-end Scheduler.Interrupt_Handling;
+end A0B.Tasking.Interrupt_Handling;
