@@ -1,0 +1,30 @@
+with "fk723m1_zgt6_startup.gpr";
+with "a0b_tasking_armv7m.gpr";
+with "../config/led_tasking_fk723m1_demo_config.gpr";
+
+project LED_Tasking_FK723M1_Demo is
+
+   for Target use FK723M1_ZGT6_Startup'Target;
+   for Runtime use FK723M1_ZGT6_Startup'Runtime;
+
+   for Source_Dirs use ("../source", "../config/");
+   for Object_Dir use "../.objs/led_tasking_fk723m1_demo_config/" & LED_Tasking_FK723M1_Demo_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Exec_Dir use "../bin";
+   for Main use ("led_tasking_fk723m1_demo.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use LED_Tasking_FK723M1_Demo_Config.Ada_Compiler_Switches & ("-O2");
+   end Compiler;
+
+   package Linker is
+      for Switches ("Ada") use
+        FK723M1_ZGT6_Startup.Linker_Switches
+         & ("-Wl,--gc-sections");
+   end Linker;
+
+   package Builder is
+      for Executable ("led_tasking_fk723m1_demo.adb") use "led_tasking_fk723m1_demo.elf";
+   end Builder;
+
+end LED_Tasking_FK723M1_Demo;
