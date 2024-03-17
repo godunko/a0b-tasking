@@ -12,6 +12,7 @@ with System.Machine_Code;
 with System.Storage_Elements;         use System.Storage_Elements;
 
 with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
+with A0B.ARMv7M.Parameters;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types;
@@ -24,9 +25,7 @@ package body A0B.Tasking is
    procedure SysTick_Handler
      with Export, Convention => C, External_Name => "SysTick_Handler";
 
-   CPU_Frequency  : constant := 520_000_000;
    Tick_Frequency : constant := 1_000;
-   Reload_Value   : constant := (CPU_Frequency / Tick_Frequency) - 1;
 
    Next_Stack : System.Address;
 
@@ -105,8 +104,13 @@ package body A0B.Tasking is
    ----------------------
 
    procedure Initialize_Timer is
+      use type A0B.Types.Unsigned_32;
+
+      Reload_Value : constant A0B.Types.Unsigned_32 :=
+        (A0B.ARMv7M.Parameters.CPU_Frequency / Tick_Frequency) - 1;
+
    begin
-      SYST.RVR.RELOAD    := Reload_Value;
+      SYST.RVR.RELOAD    := A0B.Types.Unsigned_24 (Reload_Value);
       SYST.CVR.CURRENT   := 0;
       SYST.CSR := (ENABLE    => True,  --  Enable timer
                    TICKINT   => True,  --  Enable interrupt
