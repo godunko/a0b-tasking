@@ -29,7 +29,9 @@ package body A0B.Tasking is
 
    Next_Stack : System.Address;
 
-   Stack_Size : constant := 16#1000#;
+   Idle_Stack_Size : constant := 16#100#;
+   --  Stack size of the idle task. Up to 204 bytes are necessary for the
+   --  context switching, allign it to nearest power of two value.
 
    function To_Priority_Value
      (Item : Priority) return A0B.ARMv7M.Priority_Value is
@@ -81,9 +83,13 @@ package body A0B.Tasking is
    -- Initialize --
    ----------------
 
-   procedure Initialize is
+   procedure Initialize
+     (Master_Stack_Size : System.Storage_Elements.Storage_Count)
+   is
+      use type System.Address;
+
    begin
-      Next_Stack := estack'Address - Stack_Size;
+      Next_Stack := estack'Address - Master_Stack_Size;
 
       for J in Task_Table'Range loop
          Task_Table (J) :=
@@ -95,8 +101,7 @@ package body A0B.Tasking is
       Initialize_Thread
         (Task_Table (Task_Table'First), Idle_Thread'Access, Next_Stack);
 
-      Next_Stack := @ - Stack_Size;
-      --  ??? Idle thread doesn't require so much stack.
+      Next_Stack := @ - Idle_Stack_Size;
    end Initialize;
 
    ----------------------
@@ -186,15 +191,18 @@ package body A0B.Tasking is
    -- Register_Thread --
    ---------------------
 
-   procedure Register_Thread (Thread : Thread_Subprogram) is
+   procedure Register_Thread
+     (Thread     : Thread_Subprogram;
+      Stack_Size : System.Storage_Elements.Storage_Count)
+   is
       use type System.Address;
 
    begin
       for T of Task_Table loop
          if T.Stack = System.Null_Address then
             Initialize_Thread (T, Thread, Next_Stack);
-
             exit;
+
          end if;
       end loop;
 

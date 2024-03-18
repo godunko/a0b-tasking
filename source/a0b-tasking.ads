@@ -7,6 +7,7 @@
 pragma Restrictions (No_Elaboration_Code);
 
 private with System;
+with System.Storage_Elements;
 
 with Interfaces; use Interfaces;
 
@@ -30,15 +31,28 @@ package A0B.Tasking is
 
    subtype Application_Priority is Priority range 64 .. 127;
 
-   procedure Initialize;
+   procedure Initialize
+     (Master_Stack_Size : System.Storage_Elements.Storage_Count);
+   --  Initialize tasking support. Given amount of bytes is reserved for use
+   --  as master stack. Tasks stacks are allocated below this master stack.
+   --
+   --  @param Master_Stack_Size
+   --  Size of the stack in bytes to reserve for master stack. This stack is
+   --  used by the exception handlers.
 
    procedure Run with No_Return;
+   --  Run tasks. This subprogram never returns.
+   --
+   --  Note, this subprogram resets master stack to initial position, thus all
+   --  data on the stack are lost.
 
    Clock : Unsigned_32 := 0 with Atomic, Volatile;
 
    type Thread_Subprogram is access procedure;
 
-   procedure Register_Thread (Thread : Thread_Subprogram);
+   procedure Register_Thread
+     (Thread     : Thread_Subprogram;
+      Stack_Size : System.Storage_Elements.Storage_Count);
 
    procedure Delay_Until (Time_Stamp : Unsigned_32);
 

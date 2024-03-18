@@ -26,9 +26,10 @@ begin
    PIOB_Periph.OER.Arr  := [27 => True, others => False];
    PIOB_Periph.MDDR.Arr := [27 => True, others => False];
 
-   A0B.Tasking.Initialize;
-   A0B.Tasking.Register_Thread (P.On'Access);
-   A0B.Tasking.Register_Thread (P.Off'Access);
+   A0B.Tasking.Initialize (16#200#);
+   --  512 bytes of the master stack are enough for this simple application.
+   A0B.Tasking.Register_Thread (P.On'Access, 16#100#);
+   A0B.Tasking.Register_Thread (P.Off'Access, 16#100#);
 
    A0B.Tasking.Run;
 end LED_Tasking_Arduino_Due_Demo;

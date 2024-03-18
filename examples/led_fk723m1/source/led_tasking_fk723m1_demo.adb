@@ -23,9 +23,10 @@ begin
    --  XXX CPU clock frequency can be modified, thus SisTick will works
    --  incorrectly. Should MCU's timer be used for this purpose?
 
-   A0B.Tasking.Initialize;
-   A0B.Tasking.Register_Thread (P.On'Access);
-   A0B.Tasking.Register_Thread (P.Off'Access);
+   A0B.Tasking.Initialize (16#200#);
+   --  512 bytes of the master stack are enough for this simple application.
+   A0B.Tasking.Register_Thread (P.On'Access, 16#100#);
+   A0B.Tasking.Register_Thread (P.Off'Access, 16#100#);
 
    RCC_Periph.AHB4ENR.GPIOGEN := True;
    GPIOG_Periph.MODER.Arr (7) := 1;
