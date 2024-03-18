@@ -12,5 +12,3 @@ project-files = ["gnat/led_tasking_fk723m1_demo.gpr"]
 [[depends-on]]
 a0b_tasking_armv7m = "*"
 light_fk723m1_zgt6 = "*"
-[[pins]]
-a0b_tasking_armv7m = { path='../..' }
