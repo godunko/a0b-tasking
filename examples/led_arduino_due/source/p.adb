@@ -21,7 +21,7 @@ package body P is
          C := @ + 1_000;
          Delay_Until (C);
 
-         PIOB_Periph.CODR.Arr := (27 => True, others => False);
+         PIOB_Periph.CODR.Arr := [27 => True, others => False];
       end loop;
    end Off;
 
@@ -37,7 +37,7 @@ package body P is
          C := @ + 1_000;
          Delay_Until (C);
 
-         PIOB_Periph.SODR.Arr := (27 => True, others => False);
+         PIOB_Periph.SODR.Arr := [27 => True, others => False];
       end loop;
    end On;
 
