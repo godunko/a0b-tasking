@@ -1,0 +1,14 @@
+name = "led_tasking_arduino_due_demo"
+description = "A0B LED Blink Tasking Demo for Arduino Due Board"
+version = "0.1.0"
+
+authors = ["Vadim Godunko"]
+maintainers = ["Vadim Godunko <vgodunko@gmail.com>"]
+maintainers-logins = ["godunko"]
+
+executables = ["led_tasking_arduino_due_demo"]
+project-files = ["gnat/led_tasking_arduino_due_demo.gpr"]
+
+[[depends-on]]
+a0b_tasking_armv7m = "*"
+light_arduino_due = "*"
