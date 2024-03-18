@@ -1,0 +1,16 @@
+name = "a0b_tasking"
+description = "A0B Tasking"
+version = "0.1.0"
+
+authors = ["Vadim Godunko"]
+maintainers = ["Vadim Godunko <vgodunko@gmail.com>"]
+maintainers-logins = ["godunko"]
+tags = ["embedded", "tasking"]
+
+project-files = ["gnat/a0b_tasking_armv7m.gpr"]
+
+[configuration]
+disabled = true
+
+[[depends-on]]
+a0b_armv7m = "*"
