@@ -45,11 +45,6 @@ package body A0B.Tasking is
    procedure Idle_Thread;
    --  Thread that run idle loop.
 
-   procedure Initialize_Thread
-     (TCB    : in out Task_Control_Block;
-      Thread : Thread_Subprogram;
-      Stack  : System.Address);
-
    -----------------
    -- Delay_Until --
    -----------------
@@ -98,8 +93,8 @@ package body A0B.Tasking is
             Time  => 0);
       end loop;
 
-      Initialize_Thread
-        (Task_Table (Task_Table'First), Idle_Thread'Access, Next_Stack);
+      Task_Table (Task_Table'First).Stack :=
+        Context_Switching.Initialize_Stack (Idle_Thread'Access, Next_Stack);
 
       Next_Stack := @ - Idle_Stack_Size;
    end Initialize;
@@ -123,17 +118,28 @@ package body A0B.Tasking is
                    others    => <>);
    end Initialize_Timer;
 
-   -----------------------
-   -- Initialize_Thread --
-   -----------------------
+   ---------------------
+   -- Register_Thread --
+   ---------------------
 
-   procedure Initialize_Thread
-     (TCB    : in out Task_Control_Block;
-      Thread : Thread_Subprogram;
-      Stack  : System.Address) is
+   procedure Register_Thread
+     (Thread     : Thread_Subprogram;
+      Stack_Size : System.Storage_Elements.Storage_Count)
+   is
+      use type System.Address;
+
    begin
-      TCB.Stack := Context_Switching.Initialize_Stack (Thread, Stack);
-   end Initialize_Thread;
+      for T of Task_Table loop
+         if T.Stack = System.Null_Address then
+            T.Stack :=
+              Context_Switching.Initialize_Stack (Thread, Next_Stack);
+
+            exit;
+         end if;
+      end loop;
+
+      Next_Stack := @ - Stack_Size;
+   end Register_Thread;
 
    ----------------
    -- Reschedule --
@@ -186,28 +192,6 @@ package body A0B.Tasking is
          Current_Task := Task_Table (N)'Access;
       end if;
    end Reschedule;
-
-   ---------------------
-   -- Register_Thread --
-   ---------------------
-
-   procedure Register_Thread
-     (Thread     : Thread_Subprogram;
-      Stack_Size : System.Storage_Elements.Storage_Count)
-   is
-      use type System.Address;
-
-   begin
-      for T of Task_Table loop
-         if T.Stack = System.Null_Address then
-            Initialize_Thread (T, Thread, Next_Stack);
-            exit;
-
-         end if;
-      end loop;
-
-      Next_Stack := @ - Stack_Size;
-   end Register_Thread;
 
    ---------
    -- Run --
