@@ -5,7 +5,6 @@ with A0B.ARMv7M.Parameters;
 with A0B.SVD.STM32H723.GPIO;  use A0B.SVD.STM32H723.GPIO;
 with A0B.SVD.STM32H723.RCC;   use A0B.SVD.STM32H723.RCC;
 with A0B.Tasking;
-with A0B.Scheduler;
 with A0B.Types;
 
 with P;
