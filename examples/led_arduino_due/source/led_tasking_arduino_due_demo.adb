@@ -28,8 +28,8 @@ begin
 
    A0B.Tasking.Initialize (16#200#);
    --  512 bytes of the master stack are enough for this simple application.
-   A0B.Tasking.Register_Thread (P.On'Access, 16#100#);
-   A0B.Tasking.Register_Thread (P.Off'Access, 16#100#);
+   A0B.Tasking.Register_Thread (P.On_Task, P.On'Access, 16#100#);
+   A0B.Tasking.Register_Thread (P.Off_Task, P.Off'Access, 16#100#);
 
    A0B.Tasking.Run;
 end LED_Tasking_Arduino_Due_Demo;

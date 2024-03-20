@@ -8,6 +8,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 pragma Ada_2022;
 
+with System.Address_To_Access_Conversions;
 with System.Machine_Code;
 with System.Storage_Elements;         use System.Storage_Elements;
 
@@ -74,6 +75,19 @@ package body A0B.Tasking is
       end loop;
    end Idle_Thread;
 
+   package TCB_Conversion is
+     new System.Address_To_Access_Conversions (Task_Control_Block);
+
+   function To_Address (Item : Task_Control_Block_Access) return System.Address is
+   begin
+      return TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item));
+   end To_Address;
+
+   function To_Pointer (Item : System.Address) return Task_Control_Block_Access is
+   begin
+      return Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item));
+   end To_Pointer;
+
    ----------------
    -- Initialize --
    ----------------
@@ -81,20 +95,27 @@ package body A0B.Tasking is
    procedure Initialize
      (Master_Stack_Size : System.Storage_Elements.Storage_Count)
    is
-      use type System.Address;
+      --  use type System.Address;
 
    begin
       Next_Stack := estack'Address - Master_Stack_Size;
 
-      for J in Task_Table'Range loop
-         Task_Table (J) :=
-           (Stack => System.Null_Address,
-            Id    => J,
-            Time  => 0);
-      end loop;
+      --  for J in Task_Table'Range loop
+      --     Task_Table (J) :=
+      --       (Stack => 0,
+      --        Id    => J,
+      --        Time  => 0);
+      --  end loop;
 
-      Task_Table (Task_Table'First).Stack :=
+      --  Task_Table (Task_Table'First).Stack :=
+      --    To_Integer
+      --      (Context_Switching.Initialize_Stack
+      --         (Idle_Thread'Access, Next_Stack));
+
+      Idle_Task_Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Idle_Thread'Access, Next_Stack);
+      Idle_Task_Control_Block.Next :=
+        To_Address (Idle_Task_Control_Block'Access);
 
       Next_Stack := @ - Idle_Stack_Size;
    end Initialize;
@@ -123,20 +144,36 @@ package body A0B.Tasking is
    ---------------------
 
    procedure Register_Thread
-     (Thread     : Thread_Subprogram;
-      Stack_Size : System.Storage_Elements.Storage_Count)
+     (Control_Block : aliased in out Task_Control_Block;
+      Thread        : Task_Subprogram;
+      Stack_Size    : System.Storage_Elements.Storage_Count)
    is
       use type System.Address;
 
-   begin
-      for T of Task_Table loop
-         if T.Stack = System.Null_Address then
-            T.Stack :=
-              Context_Switching.Initialize_Stack (Thread, Next_Stack);
+      Last_Task : Task_Control_Block_Access := Idle_Task_Control_Block'Access;
 
-            exit;
-         end if;
+   begin
+      --  for T of Task_Table loop
+      --     if T.Stack = To_Integer (System.Null_Address) then
+      --        T.Stack :=
+      --          To_Integer
+      --            (Context_Switching.Initialize_Stack (Thread, Next_Stack));
+
+      --        exit;
+      --     end if;
+      --  end loop;
+
+      loop
+         exit when Last_Task.Next
+                     = To_Address (Idle_Task_Control_Block'Access);
+
+         Last_Task := To_Pointer (Last_Task.Next);
       end loop;
+
+      Control_Block.Next  := Last_Task.Next;
+      Control_Block.Stack :=
+        Context_Switching.Initialize_Stack (Thread, Next_Stack);
+      Last_Task.Next      := To_Address (Control_Block'Unchecked_Access);
 
       Next_Stack := @ - Stack_Size;
    end Register_Thread;
@@ -152,8 +189,10 @@ package body A0B.Tasking is
       --  use type A0B.Types.Unsigned_32;
 
       --  C : A0B.Types.Unsigned_32;
-      C : constant Integer := Current_Task.Id;
-      N : Integer          := C;
+      --  C : constant Integer := Current_Task.Id;
+      --  N : Integer          := C;
+
+      Next_Task : Task_Control_Block_Access := Current_Task;
 
    begin
       --  for J in Task_Table'Range loop
@@ -167,30 +206,55 @@ package body A0B.Tasking is
       --  C := Current_Task.Id;
 
       loop
-         N := @ + 1;
+         Next_Task := To_Pointer (Next_Task.Next);
 
-         if N > Task_Table'Last then
-            N := Task_Table'First + 1;  --  First entry is idle thread.
+         --  if Next_Task = null then
+         --     Next_Task := Idle_Task_Control_Block.Next;
 
-            exit when C = Task_Table'First;
+         --     exit when Current_Task = Idle_Task_Control_Block;
+         --  end if;
+
+         exit when Next_Task = Current_Task;
+
+         if Next_Task /= Idle_Task_Control_Block'Access then
+            --  exit when Next_Task.Time /= 0 and Next_Task.Time <= Clock;
+            exit when Next_Task.Time <= Clock;
          end if;
-
-         exit when N = C;
-
-         exit when
-           Task_Table (N).Stack /= System.Null_Address
-             and then (Task_Table (N).Time = 0
-                         or Task_Table (N).Time <= Clock);
       end loop;
+      --  loop
+      --     N := @ + 1;
 
-      if Task_Table (N).Time /= 0 and Task_Table (N).Time > Clock then
-         Current_Task := Task_Table (Task_Table'First)'Access;
+      --     if N > Task_Table'Last then
+      --        N := Task_Table'First + 1;  --  First entry is idle thread.
+
+      --        exit when C = Task_Table'First;
+      --     end if;
+
+      --     exit when N = C;
+
+      --     exit when
+      --       Task_Table (N).Stack /= To_Integer (System.Null_Address)
+      --         and then (Task_Table (N).Time = 0
+      --                     or Task_Table (N).Time <= Clock);
+      --  end loop;
+
+      if Next_Task.Time /= 0 and Next_Task.Time > Clock then
+         Current_Task   := Idle_Task_Control_Block'Access;
          --  Run idle task
 
       else
-         Task_Table (N).Time := 0;
-         Current_Task := Task_Table (N)'Access;
+         Next_Task.Time := 0;
+         Current_Task   := Next_Task;
       end if;
+
+      --  if Task_Table (N).Time /= 0 and Task_Table (N).Time > Clock then
+      --     Current_Task := Task_Table (Task_Table'First)'Access;
+      --     --  Run idle task
+
+      --  else
+      --     Task_Table (N).Time := 0;
+      --     Current_Task := Task_Table (N)'Access;
+      --  end if;
    end Reschedule;
 
    ---------

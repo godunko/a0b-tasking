@@ -12,8 +12,11 @@ with System.Storage_Elements;
 with Interfaces; use Interfaces;
 
 private with A0B.ARMv7M;
+--  private with A0B.Scheduler;
 
 package A0B.Tasking is
+
+   --  pragma Preelaborate;
 
    type Priority is mod 2 ** 8;
    --  Task/interrupt of priority level. Zero means lowerest priority.
@@ -48,31 +51,53 @@ package A0B.Tasking is
 
    Clock : Unsigned_32 := 0 with Atomic, Volatile;
 
-   type Thread_Subprogram is access procedure;
+   type Task_Subprogram is access procedure;
+
+   type Task_Control_Block is limited private;
 
    procedure Register_Thread
-     (Thread     : Thread_Subprogram;
-      Stack_Size : System.Storage_Elements.Storage_Count);
+     (Control_Block : aliased in out Task_Control_Block;
+      Thread        : Task_Subprogram;
+      Stack_Size    : System.Storage_Elements.Storage_Count);
 
    procedure Delay_Until (Time_Stamp : Unsigned_32);
 
 private
 
-   type Task_Control_Block is record
+   type Task_Control_Block_Access is access all Task_Control_Block;
+
+   type Task_Control_Block is limited record
       Stack  : System.Address;
-      Id     : Integer;
+      --  Stack  : System.Storage_Elements.Integer_Address; -- := 0;
+      --  Id     : Integer                                 := 0;
       --  Stack  : System.Address := System.Null_Address;
       --  Unused : Boolean := True;
-      Time   : Unsigned_32;
-   end record;
-
-   type Task_Control_Block_Access is access all Task_Control_Block;
+      Time   : Unsigned_32; --                             := 0;
+      --  Next   : Task_Control_Block_Access;
+      Next   : System.Address;
+   end record with Preelaborable_Initialization;
+   --  State:
+   --   - Idle     - special kind of task, run only there is no other tasks
+   --   - Runnable - can be run
+   --   - Waiting  - waiting for some event
+   --
+   --  Events: list of events task waiting for.
+   --   - suspension object - to wait for signal from another task
+   --   - wait for system's interrupt
+   --   - wait for flag
+   --   - timer event
 
    procedure Reschedule;
 
-   Task_Table   : array (0 .. 3) of aliased Task_Control_Block;
-   Current_Task : not null Task_Control_Block_Access :=
-     Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
+   --  Task_Table   : array (0 .. 3) of aliased Task_Control_Block;
+   --  Current_Task : not null Task_Control_Block_Access :=
+   --    Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
+
+   Idle_Task_Control_Block : aliased Task_Control_Block;
+
+   Current_Task   : not null Task_Control_Block_Access :=
+     Idle_Task_Control_Block'Access;
+   --  Task_List_Head : Task_Control_Block_Access;
 
    PendSV_Priority  : constant A0B.ARMv7M.Priority_Value := 255;
    SysTick_Priority : constant A0B.ARMv7M.Priority_Value := 255;

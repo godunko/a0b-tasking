@@ -15,7 +15,7 @@ pragma Restrictions (No_Elaboration_Code);
 private package A0B.Tasking.Context_Switching is
 
    function Initialize_Stack
-     (Thread : Thread_Subprogram;
+     (Thread : Task_Subprogram;
       Stack  : System.Address) return System.Address;
    --  Initialize stack to run task for the first time.
 

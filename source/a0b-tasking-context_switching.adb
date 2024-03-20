@@ -124,15 +124,14 @@ package body A0B.Tasking.Context_Switching is
    ----------------------
 
    function Initialize_Stack
-     (Thread : Thread_Subprogram;
+     (Thread : Task_Subprogram;
       Stack  : System.Address) return System.Address
    is
       type Unsigned_32_Array is
         array (A0B.Types.Unsigned_32 range <>) of A0B.Types.Unsigned_32;
 
       function To_Unsigned_32 is
-        new Ada.Unchecked_Conversion
-              (Thread_Subprogram, A0B.Types.Unsigned_32);
+        new Ada.Unchecked_Conversion (Task_Subprogram, A0B.Types.Unsigned_32);
 
       EH_Frame : Unsigned_32_Array (0 .. EH_Basic_Frame_Length - 1)
         with Address => Stack - EH_Basic_Frame_Size;
