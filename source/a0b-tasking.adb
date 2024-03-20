@@ -16,7 +16,7 @@ with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
 with A0B.ARMv7M.Parameters;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
-with A0B.Types;
+with A0B.Types.GCC_Builtins;
 
 with A0B.Tasking.Context_Switching;
 with A0B.Tasking.Interrupt_Handling;
@@ -30,7 +30,7 @@ package body A0B.Tasking is
 
    Next_Stack : System.Address;
 
-   Idle_Stack_Size : constant := 16#100#;
+   --  Idle_Stack_Size : constant := 16#100#;
    --  Stack size of the idle task. Up to 204 bytes are necessary for the
    --  context switching, allign it to nearest power of two value.
 
@@ -95,29 +95,23 @@ package body A0B.Tasking is
    procedure Initialize
      (Master_Stack_Size : System.Storage_Elements.Storage_Count)
    is
-      --  use type System.Address;
+      Stack_Frame_Size : constant A0B.Types.Unsigned_32 :=
+        A0B.Types.Unsigned_32 (Context_Switching.Stack_Frame_Size);
+      Power_Of_Two     : constant Integer :=
+        32 - Integer (A0B.Types.GCC_Builtins.clz (Stack_Frame_Size));
+      Stack_Size       : constant A0B.Types.Unsigned_32 :=
+        A0B.Types.Shift_Left (1, Power_Of_Two);
 
    begin
       Next_Stack := estack'Address - Master_Stack_Size;
-
-      --  for J in Task_Table'Range loop
-      --     Task_Table (J) :=
-      --       (Stack => 0,
-      --        Id    => J,
-      --        Time  => 0);
-      --  end loop;
-
-      --  Task_Table (Task_Table'First).Stack :=
-      --    To_Integer
-      --      (Context_Switching.Initialize_Stack
-      --         (Idle_Thread'Access, Next_Stack));
 
       Idle_Task_Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Idle_Thread'Access, Next_Stack);
       Idle_Task_Control_Block.Next :=
         To_Address (Idle_Task_Control_Block'Access);
 
-      Next_Stack := @ - Idle_Stack_Size;
+      Next_Stack :=
+        @ - System.Storage_Elements.Storage_Offset (Stack_Size);
    end Initialize;
 
    ----------------------

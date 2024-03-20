@@ -28,11 +28,15 @@ project A0B_Tasking_ARMv7M is
               "a0b-tasking-context_switching-restore_context__no_fpu.adb";
             for Body ("A0B.Tasking.Context_Switching.Save_Context") use
               "a0b-tasking-context_switching-save_context__no_fpu.adb";
+            for Body ("A0B.Tasking.Context_Switching.Stack_Frame_Size") use
+              "a0b-tasking-context_switching-stack_frame_size__no_fpu.adb";
          when others =>
             for Body ("A0B.Tasking.Context_Switching.Restore_Context") use
               "a0b-tasking-context_switching-restore_context__fpu.adb";
             for Body ("A0B.Tasking.Context_Switching.Save_Context") use
               "a0b-tasking-context_switching-save_context__fpu.adb";
+            for Body ("A0B.Tasking.Context_Switching.Stack_Frame_Size") use
+              "a0b-tasking-context_switching-stack_frame_size__fpu.adb";
       end case;
    end Naming;
 

@@ -172,4 +172,11 @@ package body A0B.Tasking.Context_Switching is
 
    procedure Save_Context is separate;
 
+   ----------------------
+   -- Stack_Frame_Size --
+   ----------------------
+
+   function Stack_Frame_Size
+     return System.Storage_Elements.Storage_Count is separate;
+
 end A0B.Tasking.Context_Switching;

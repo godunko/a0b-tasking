@@ -25,4 +25,8 @@ private package A0B.Tasking.Context_Switching is
    procedure Restore_Context;
    --  Restore task context and jump to the task's code.
 
+   function Stack_Frame_Size return System.Storage_Elements.Storage_Count
+     with Inline_Always;
+   --  Return size of the stack to store context switch frame.
+
 end A0B.Tasking.Context_Switching;
