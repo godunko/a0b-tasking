@@ -10,6 +10,6 @@ pragma Restrictions (No_Elaboration_Code);
 
 package Ada.Real_Time.Delays is
 
-   procedure Delay_Until (T : Time);
+   procedure Delay_Until (T : Time) with Inline_Always;
 
 end Ada.Real_Time.Delays;

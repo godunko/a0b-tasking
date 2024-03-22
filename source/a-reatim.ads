@@ -18,9 +18,10 @@ package Ada.Real_Time is
    --   Time_Span_Unit : constant Time_Span;
 
    --   Tick : constant Time_Span;
-   function Clock return Time;
+   function Clock return Time with Inline_Always;
 
-   function "+" (Left : Time; Right : Time_Span) return Time;
+   function "+" (Left : Time; Right : Time_Span) return Time
+     with Inline_Always;
    --   function "+" (Left : Time_Span; Right : Time) return Time;
    --   function "-" (Left : Time; Right : Time_Span) return Time;
    --   function "-" (Left : Time; Right : Time) return Time_Span;
@@ -50,7 +51,8 @@ package Ada.Real_Time is
 
    --   function Nanoseconds  (NS : Integer) return Time_Span;
    --   function Microseconds (US : Integer) return Time_Span;
-   function Milliseconds (MS : Integer) return Time_Span;
+   function Milliseconds (MS : Integer) return Time_Span
+     with Inline_Always;
    --   function Seconds      (S  : Integer) return Time_Span;
    --   function Minutes      (M  : Integer) return Time_Span;
 
