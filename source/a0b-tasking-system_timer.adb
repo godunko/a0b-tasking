@@ -15,7 +15,7 @@ package body A0B.Tasking.System_Timer is
 
    Tick_Frequency : constant := 1_000;
 
-   Overflow_Count : A0B.Types.Unsigned_64 := 0 with Volatile;
+   Overflow_Counter  : A0B.Types.Unsigned_64 := 0 with Volatile;
    --  Counter of the SysTick timer overflows multiplied by 1_000, thus it is
    --  base monotonic time for current tick in microseconds.
 
@@ -28,37 +28,38 @@ package body A0B.Tasking.System_Timer is
    -----------
 
    function Clock return A0B.Types.Unsigned_64 is
+      pragma Suppress (Division_Check);
+      --  Suppress division by zero check, Microsecond_Ticks must not be equal
+      --  to zero when configured properly.
+
       use type A0B.Types.Unsigned_64;
 
-      Result   : A0B.Types.Unsigned_64;
-      CURRENT1 : A0B.Types.Unsigned_32;
-      CURRENT2 : A0B.Types.Unsigned_32;
+      Result  : A0B.Types.Unsigned_64;
+      CURRENT : A0B.Types.Unsigned_32;
 
    begin
+      --  SysTick timer interrupt has lowerst priority, thus can be handled
+      --  only when there is no another higher priority tasks/interrupts.
+      --  However, Clock subprogram can be called by the task with any
+      --  priority, thus global Overflow_Count object might be not updated
+      --  yet. So, it is updated here. Interrupts are disabled to make sure
+      --  that no other higher priority task do update.
+
       Disable_Interrupts;
 
-      loop
-         CURRENT1 := SYST.CVR.CURRENT;
+      CURRENT := SYST.CVR.CURRENT;
+      Result  := Overflow_Counter;
 
-         if SYST.CSR.COUNTFLAG then
-            Overflow_Count := @ + 1_000;
-            CURRENT2   := SYST.CVR.CURRENT;
-
-            exit;
-
-         else
-            Result   := Overflow_Count;
-            CURRENT2 := SYST.CVR.CURRENT;
-
-            exit when CURRENT2 < CURRENT1;
-         end if;
-      end loop;
+      if SYST.CSR.COUNTFLAG then
+         Result         := @ + 1_000;
+         Overflow_Counter := Result;
+      end if;
 
       Enable_Interrupts;
 
       Result :=
         @ + A0B.Types.Unsigned_64
-              ((Millisecond_Ticks - CURRENT2) / Microsecond_Ticks);
+              ((Millisecond_Ticks - CURRENT) / Microsecond_Ticks);
 
       return Result;
    end Clock;
@@ -93,7 +94,7 @@ package body A0B.Tasking.System_Timer is
       Reload_Value      := Millisecond_Ticks - 1;
 
       SYST.RVR.RELOAD  := A0B.Types.Unsigned_24 (Reload_Value);
-      SYST.CVR.CURRENT := 0;
+      SYST.CVR.CURRENT := 0;  --  Any write operation resets value to zero.
       SYST.CSR :=
         (ENABLE    => False,                --  Enable timer
          TICKINT   => False,                --  Enable interrupt
@@ -109,10 +110,17 @@ package body A0B.Tasking.System_Timer is
       use type A0B.Types.Unsigned_64;
 
    begin
+      --  This subprogram is called from the SysTick handler, which has
+      --  lowerst priority, thus can be preempted by any task/interrupt
+      --  which can call Clock function. Disable interrupts till update
+      --  of the overflow counter, and check whether overflow has been
+      --  processed by higher priority task/interrupt before update of
+      --  the counter.
+
       Disable_Interrupts;
 
       if SYST.CSR.COUNTFLAG then
-         Overflow_Count := @ + 1_000;
+         Overflow_Counter := @ + 1_000;
       end if;
 
       Enable_Interrupts;
