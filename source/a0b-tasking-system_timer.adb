@@ -15,6 +15,8 @@ package body A0B.Tasking.System_Timer is
 
    Tick_Frequency : constant := 1_000;
 
+   One_Millisecond : constant := 1_000_000;
+
    Overflow_Counter  : A0B.Types.Unsigned_64 := 0 with Volatile;
    --  Counter of the SysTick timer overflows multiplied by 1_000, thus it is
    --  base monotonic time for current tick in microseconds.
@@ -34,8 +36,9 @@ package body A0B.Tasking.System_Timer is
 
       use type A0B.Types.Unsigned_64;
 
-      Result  : A0B.Types.Unsigned_64;
-      CURRENT : A0B.Types.Unsigned_32;
+      Result       : A0B.Types.Unsigned_64;
+      CURRENT      : A0B.Types.Unsigned_32;
+      Microseconds : A0B.Types.Unsigned_32;
 
    begin
       --  SysTick timer interrupt has lowerst priority, thus can be handled
@@ -51,15 +54,14 @@ package body A0B.Tasking.System_Timer is
       Result  := Overflow_Counter;
 
       if SYST.CSR.COUNTFLAG then
-         Result         := @ + 1_000;
+         Result           := @ + One_Millisecond;
          Overflow_Counter := Result;
       end if;
 
       Enable_Interrupts;
 
-      Result :=
-        @ + A0B.Types.Unsigned_64
-              ((Millisecond_Ticks - CURRENT) / Microsecond_Ticks);
+      Microseconds := (Millisecond_Ticks - CURRENT) / Microsecond_Ticks;
+      Result       := @ + A0B.Types.Unsigned_64 (Microseconds * 1_000);
 
       return Result;
    end Clock;
@@ -120,7 +122,7 @@ package body A0B.Tasking.System_Timer is
       Disable_Interrupts;
 
       if SYST.CSR.COUNTFLAG then
-         Overflow_Counter := @ + 1_000;
+         Overflow_Counter := @ + One_Millisecond;
       end if;
 
       Enable_Interrupts;
