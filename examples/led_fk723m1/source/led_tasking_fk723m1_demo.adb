@@ -13,6 +13,8 @@ procedure LED_Tasking_FK723M1_Demo is
    use type A0B.Types.Unsigned_32;
 
 begin
+   --  delay until Ada.Real_Time.Clock;
+
    A0B.ARMv7M.Parameters.CPU_Frequency     := 520_000_000;
    A0B.ARMv7M.Parameters.SysTick_Frequency :=
      A0B.ARMv7M.Parameters.CPU_Frequency / 8;
@@ -23,7 +25,7 @@ begin
    --  XXX CPU clock frequency can be modified, thus SisTick will works
    --  incorrectly. Should MCU's timer be used for this purpose?
 
-   A0B.Tasking.Initialize (16#200#);
+   A0B.Tasking.Initialize (16#200#, True, 520_000_000);
    --  512 bytes of the master stack are enough for this simple application.
    A0B.Tasking.Register_Thread (P.On_Task, P.On'Access, 16#100#);
    A0B.Tasking.Register_Thread (P.Off_Task, P.Off'Access, 16#100#);

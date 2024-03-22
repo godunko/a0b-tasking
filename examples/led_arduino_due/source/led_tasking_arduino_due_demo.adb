@@ -26,7 +26,7 @@ begin
    PIOB_Periph.OER.Arr  := [27 => True, others => False];
    PIOB_Periph.MDDR.Arr := [27 => True, others => False];
 
-   A0B.Tasking.Initialize (16#200#);
+   A0B.Tasking.Initialize (16#200#, True, 84_000_000);
    --  512 bytes of the master stack are enough for this simple application.
    A0B.Tasking.Register_Thread (P.On_Task, P.On'Access, 16#100#);
    A0B.Tasking.Register_Thread (P.Off_Task, P.Off'Access, 16#100#);
