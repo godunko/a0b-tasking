@@ -6,8 +6,6 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-with Interfaces;
-
 with A0B.Tasking;
 
 package body Ada.Real_Time.Delays is
@@ -18,7 +16,7 @@ package body Ada.Real_Time.Delays is
 
    procedure Delay_Until (T : Time) is
    begin
-      A0B.Tasking.Delay_Until (Interfaces.Unsigned_32 (T));
+      A0B.Tasking.Delay_Until (A0B.Types.Unsigned_64 (T));
    end Delay_Until;
 
 end Ada.Real_Time.Delays;

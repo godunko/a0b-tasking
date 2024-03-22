@@ -9,14 +9,12 @@ pragma Restrictions (No_Elaboration_Code);
 private with System;
 with System.Storage_Elements;
 
-with Interfaces; use Interfaces;
-
 private with A0B.ARMv7M;
---  private with A0B.Scheduler;
+with A0B.Types;
 
 package A0B.Tasking is
 
-   --  pragma Preelaborate;
+   use type A0B.Types.Unsigned_32;
 
    type Priority is mod 2 ** 8;
    --  Task/interrupt of priority level. Zero means lowerest priority.
@@ -35,21 +33,30 @@ package A0B.Tasking is
    subtype Application_Priority is Priority range 64 .. 127;
 
    procedure Initialize
-     (Master_Stack_Size : System.Storage_Elements.Storage_Count);
+     (Master_Stack_Size   : System.Storage_Elements.Storage_Count;
+      Use_Processor_Clock : Boolean;
+      Clock_Frequency     : A0B.Types.Unsigned_32)
+      with Pre =>
+        Clock_Frequency mod 1_000_000 = 0
+          and Clock_Frequency <= 2**20 * 1_000;
    --  Initialize tasking support. Given amount of bytes is reserved for use
    --  as master stack. Tasks stacks are allocated below this master stack.
    --
    --  @param Master_Stack_Size
    --  Size of the stack in bytes to reserve for master stack. This stack is
    --  used by the exception handlers.
+   --  @param Use_Processor_Clock
+   --  Source of the SysTick clock:
+   --    * False - external clock
+   --    * True  - processor clock
+   --  @param Clock_Frequency
+   --  Clock frequency of the SysTick timer (external or processor).
 
    procedure Run with No_Return;
    --  Run tasks. This subprogram never returns.
    --
    --  Note, this subprogram resets master stack to initial position, thus all
    --  data on the stack are lost.
-
-   Clock : Unsigned_32 := 0 with Atomic, Volatile;
 
    type Task_Subprogram is access procedure;
 
@@ -60,7 +67,7 @@ package A0B.Tasking is
       Thread        : Task_Subprogram;
       Stack_Size    : System.Storage_Elements.Storage_Count);
 
-   procedure Delay_Until (Time_Stamp : Unsigned_32);
+   procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64);
 
 private
 
@@ -72,7 +79,7 @@ private
       --  Id     : Integer                                 := 0;
       --  Stack  : System.Address := System.Null_Address;
       --  Unused : Boolean := True;
-      Time   : Unsigned_32; --                             := 0;
+      Time   : A0B.Types.Unsigned_64; --                             := 0;
       --  Next   : Task_Control_Block_Access;
       Next   : System.Address;
    end record with Preelaborable_Initialization;
@@ -88,10 +95,6 @@ private
    --   - timer event
 
    procedure Reschedule;
-
-   --  Task_Table   : array (0 .. 3) of aliased Task_Control_Block;
-   --  Current_Task : not null Task_Control_Block_Access :=
-   --    Task_Table (Task_Table'First)'Unchecked_Access with Volatile;
 
    Idle_Task_Control_Block : aliased Task_Control_Block;
 

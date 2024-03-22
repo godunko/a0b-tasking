@@ -13,26 +13,17 @@ with System.Machine_Code;
 with System.Storage_Elements;         use System.Storage_Elements;
 
 with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
-with A0B.ARMv7M.Parameters;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.ARMv7M.System_Timer;         use A0B.ARMv7M.System_Timer;
 with A0B.Types.GCC_Builtins;
 
 with A0B.Tasking.Context_Switching;
 with A0B.Tasking.Interrupt_Handling;
+with A0B.Tasking.System_Timer;
 
 package body A0B.Tasking is
 
-   procedure SysTick_Handler
-     with Export, Convention => C, External_Name => "SysTick_Handler";
-
-   Tick_Frequency : constant := 1_000;
-
    Next_Stack : System.Address;
-
-   --  Idle_Stack_Size : constant := 16#100#;
-   --  Stack size of the idle task. Up to 204 bytes are necessary for the
-   --  context switching, allign it to nearest power of two value.
 
    function To_Priority_Value
      (Item : Priority) return A0B.ARMv7M.Priority_Value is
@@ -40,17 +31,30 @@ package body A0B.Tasking is
          (Priority (A0B.ARMv7M.Priority_Value'Last) - Item));
    --  Conversion from abstract priority level to ARM priority value.
 
-   estack : constant Interfaces.Unsigned_64
+   estack : constant A0B.Types.Reserved_32
      with Import, Convention => C, External_Name => "_estack";
 
    procedure Idle_Thread;
    --  Thread that run idle loop.
 
+   package TCB_Conversion is
+     new System.Address_To_Access_Conversions (Task_Control_Block);
+
+   function To_Address (Item : Task_Control_Block_Access) return System.Address is
+   begin
+      return TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item));
+   end To_Address;
+
+   function To_Pointer (Item : System.Address) return Task_Control_Block_Access is
+   begin
+      return Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item));
+   end To_Pointer;
+
    -----------------
    -- Delay_Until --
    -----------------
 
-   procedure Delay_Until (Time_Stamp : Unsigned_32) is
+   procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64) is
    begin
       --  Update task control block.
 
@@ -75,25 +79,14 @@ package body A0B.Tasking is
       end loop;
    end Idle_Thread;
 
-   package TCB_Conversion is
-     new System.Address_To_Access_Conversions (Task_Control_Block);
-
-   function To_Address (Item : Task_Control_Block_Access) return System.Address is
-   begin
-      return TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item));
-   end To_Address;
-
-   function To_Pointer (Item : System.Address) return Task_Control_Block_Access is
-   begin
-      return Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item));
-   end To_Pointer;
-
    ----------------
    -- Initialize --
    ----------------
 
    procedure Initialize
-     (Master_Stack_Size : System.Storage_Elements.Storage_Count)
+     (Master_Stack_Size   : System.Storage_Elements.Storage_Count;
+      Use_Processor_Clock : Boolean;
+      Clock_Frequency     : A0B.Types.Unsigned_32)
    is
       Stack_Frame_Size : constant A0B.Types.Unsigned_32 :=
         A0B.Types.Unsigned_32 (Context_Switching.Stack_Frame_Size);
@@ -112,26 +105,9 @@ package body A0B.Tasking is
 
       Next_Stack :=
         @ - System.Storage_Elements.Storage_Offset (Stack_Size);
+
+      System_Timer.Initialize_Timer (Use_Processor_Clock, Clock_Frequency);
    end Initialize;
-
-   ----------------------
-   -- Initialize_Timer --
-   ----------------------
-
-   procedure Initialize_Timer is
-      use type A0B.Types.Unsigned_32;
-
-      Reload_Value : constant A0B.Types.Unsigned_32 :=
-        (A0B.ARMv7M.Parameters.CPU_Frequency / Tick_Frequency) - 1;
-
-   begin
-      SYST.RVR.RELOAD    := A0B.Types.Unsigned_24 (Reload_Value);
-      SYST.CVR.CURRENT   := 0;
-      SYST.CSR := (ENABLE    => True,  --  Enable timer
-                   TICKINT   => True,  --  Enable interrupt
-                   CLKSOURCE => True,  --  Use CPU clock
-                   others    => <>);
-   end Initialize_Timer;
 
    ---------------------
    -- Register_Thread --
@@ -147,16 +123,6 @@ package body A0B.Tasking is
       Last_Task : Task_Control_Block_Access := Idle_Task_Control_Block'Access;
 
    begin
-      --  for T of Task_Table loop
-      --     if T.Stack = To_Integer (System.Null_Address) then
-      --        T.Stack :=
-      --          To_Integer
-      --            (Context_Switching.Initialize_Stack (Thread, Next_Stack));
-
-      --        exit;
-      --     end if;
-      --  end loop;
-
       loop
          exit when Last_Task.Next
                      = To_Address (Idle_Task_Control_Block'Access);
@@ -177,36 +143,16 @@ package body A0B.Tasking is
    ----------------
 
    procedure Reschedule is
-      use type System.Address;
+      use type A0B.Types.Unsigned_64;
 
       pragma Suppress (All_Checks);
-      --  use type A0B.Types.Unsigned_32;
 
-      --  C : A0B.Types.Unsigned_32;
-      --  C : constant Integer := Current_Task.Id;
-      --  N : Integer          := C;
-
-      Next_Task : Task_Control_Block_Access := Current_Task;
+      Clock     : constant A0B.Types.Unsigned_64 := System_Timer.Clock;
+      Next_Task : Task_Control_Block_Access      := Current_Task;
 
    begin
-      --  for J in Task_Table'Range loop
-      --     if Current_Task = Task_Table (J)'Access then
-      --        C := J + 1;
-
-      --        exit;
-      --     end if;
-      --  end loop;
-
-      --  C := Current_Task.Id;
-
       loop
          Next_Task := To_Pointer (Next_Task.Next);
-
-         --  if Next_Task = null then
-         --     Next_Task := Idle_Task_Control_Block.Next;
-
-         --     exit when Current_Task = Idle_Task_Control_Block;
-         --  end if;
 
          exit when Next_Task = Current_Task;
 
@@ -215,22 +161,6 @@ package body A0B.Tasking is
             exit when Next_Task.Time <= Clock;
          end if;
       end loop;
-      --  loop
-      --     N := @ + 1;
-
-      --     if N > Task_Table'Last then
-      --        N := Task_Table'First + 1;  --  First entry is idle thread.
-
-      --        exit when C = Task_Table'First;
-      --     end if;
-
-      --     exit when N = C;
-
-      --     exit when
-      --       Task_Table (N).Stack /= To_Integer (System.Null_Address)
-      --         and then (Task_Table (N).Time = 0
-      --                     or Task_Table (N).Time <= Clock);
-      --  end loop;
 
       if Next_Task.Time /= 0 and Next_Task.Time > Clock then
          Current_Task   := Idle_Task_Control_Block'Access;
@@ -240,15 +170,6 @@ package body A0B.Tasking is
          Next_Task.Time := 0;
          Current_Task   := Next_Task;
       end if;
-
-      --  if Task_Table (N).Time /= 0 and Task_Table (N).Time > Clock then
-      --     Current_Task := Task_Table (Task_Table'First)'Access;
-      --     --  Run idle task
-
-      --  else
-      --     Task_Table (N).Time := 0;
-      --     Current_Task := Task_Table (N)'Access;
-      --  end if;
    end Reschedule;
 
    ---------
@@ -262,7 +183,7 @@ package body A0B.Tasking is
       Has_FPU : constant Boolean := (CPACR.CP10 /= 0) and (CPACR.CP11 /= 0);
 
    begin
-      Initialize_Timer;
+      System_Timer.Enable_Timer;
 
       SCB.SHPR (A0B.ARMv7M.SVCall_Exception)  := SVCall_Priority;
       SCB.SHPR (A0B.ARMv7M.PendSV_Exception)  := PendSV_Priority;
@@ -294,12 +215,8 @@ package body A0B.Tasking is
       Instruction_Synchronization_Barrier;
       --  Reset priority boosting and ensure that priority is applied.
 
-      System.Machine_Code.Asm
-        (Template => "cpsie i",
-         Volatile => True);
-      System.Machine_Code.Asm
-        (Template => "cpsie f",
-         Volatile => True);
+      Enable_Interrupts;
+      Enable_Faults;
       --  Enable interrupts and faults.
 
       Set_MSP (estack'Address);
@@ -316,20 +233,5 @@ package body A0B.Tasking is
          Volatile => True);
       --  Call SVC to start first thread. It never returns.
    end Run;
-
-   ---------------------
-   -- SysTick_Handler --
-   ---------------------
-
-   procedure SysTick_Handler is
-   begin
-      --  if Switch then
-         --  Switch   := False;
-         SCB.ICSR := (PENDSVSET => True, others => <>);
-         --  Request PendSV exception to switch context
-      --  end if;
-
-      Clock := @ + 1;
-   end SysTick_Handler;
 
 end A0B.Tasking;

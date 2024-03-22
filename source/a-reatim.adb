@@ -6,7 +6,7 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-with A0B.Tasking;
+with A0B.Tasking.System_Timer;
 
 package body Ada.Real_Time is
 
@@ -60,7 +60,7 @@ package body Ada.Real_Time is
 
    function Clock return Time is
    begin
-      return Ada.Real_Time.Time (A0B.Tasking.Clock);
+      return Ada.Real_Time.Time (A0B.Tasking.System_Timer.Clock);
    end Clock;
 
    --   ------------------
@@ -78,7 +78,7 @@ package body Ada.Real_Time is
 
    function Milliseconds (MS : Integer) return Time_Span is
    begin
-      return Time_Span (MS) * 1;
+      return Time_Span (MS) * 1_000;
    end Milliseconds;
 
 end Ada.Real_Time;

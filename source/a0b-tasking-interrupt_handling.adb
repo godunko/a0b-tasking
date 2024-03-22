@@ -6,9 +6,10 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-with A0B.ARMv7M.CMSIS; use A0B.ARMv7M.CMSIS;
-
+with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
+with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.Tasking.Context_Switching;
+with A0B.Tasking.System_Timer;
 
 package body A0B.Tasking.Interrupt_Handling is
 
@@ -17,6 +18,9 @@ package body A0B.Tasking.Interrupt_Handling is
 
    procedure SVC_Handler
      with Export, Convention => C, External_Name => "SVC_Handler";
+
+   procedure SysTick_Handler
+     with Export, Convention => C, External_Name => "SysTick_Handler";
 
    --------------------
    -- PendSV_Handler --
@@ -41,5 +45,20 @@ package body A0B.Tasking.Interrupt_Handling is
 
       Context_Switching.Restore_Context;
    end SVC_Handler;
+
+   ---------------------
+   -- SysTick_Handler --
+   ---------------------
+
+   procedure SysTick_Handler is
+   begin
+      --  if Switch then
+         --  Switch   := False;
+         SCB.ICSR := (PENDSVSET => True, others => <>);
+         --  Request PendSV exception to switch context
+      --  end if;
+
+      System_Timer.Overflow;
+   end SysTick_Handler;
 
 end A0B.Tasking.Interrupt_Handling;
