@@ -99,7 +99,8 @@ private
    Idle_Task_Control_Block : aliased Task_Control_Block;
 
    Current_Task   : not null Task_Control_Block_Access :=
-     Idle_Task_Control_Block'Access;
+     Idle_Task_Control_Block'Access
+       with Linker_Section => ".dtcm.data";
    --  Task_List_Head : Task_Control_Block_Access;
 
    PendSV_Priority  : constant A0B.ARMv7M.Priority_Value := 255;

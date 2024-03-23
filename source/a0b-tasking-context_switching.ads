@@ -22,7 +22,8 @@ private package A0B.Tasking.Context_Switching is
    procedure Save_Context with Inline_Always;
    --  Save task context
 
-   procedure Restore_Context;
+   procedure Restore_Context
+     with Linker_Section => ".itcm.text";
    --  Restore task context and jump to the task's code.
 
    function Stack_Frame_Size return System.Storage_Elements.Storage_Count

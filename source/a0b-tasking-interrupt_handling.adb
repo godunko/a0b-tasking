@@ -14,13 +14,15 @@ with A0B.Tasking.System_Timer;
 package body A0B.Tasking.Interrupt_Handling is
 
    procedure PendSV_Handler
-     with Export, Convention => C, External_Name => "PendSV_Handler";
+     with Export, Convention => C, External_Name => "PendSV_Handler",
+          Linker_Section => ".itcm.text";
 
    procedure SVC_Handler
      with Export, Convention => C, External_Name => "SVC_Handler";
 
    procedure SysTick_Handler
-     with Export, Convention => C, External_Name => "SysTick_Handler";
+     with Export, Convention => C, External_Name => "SysTick_Handler",
+          Linker_Section => ".itcm.text";
 
    --------------------
    -- PendSV_Handler --

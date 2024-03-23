@@ -14,7 +14,8 @@ package A0B.Tasking.System_Timer is
 
    pragma Elaborate_Body;
 
-   function Clock return A0B.Types.Unsigned_64;
+   function Clock return A0B.Types.Unsigned_64
+     with Linker_Section => ".itcm.text";
 
    procedure Initialize_Timer
      (Use_Processor_Clock : Boolean;
@@ -24,7 +25,8 @@ package A0B.Tasking.System_Timer is
    procedure Enable_Timer;
    --  Enable SysTick timer and interrupt.
 
-   procedure Overflow;
+   procedure Overflow
+     with Linker_Section => ".itcm.text";
    --  Handle timer's overflow event.
 
 end A0B.Tasking.System_Timer;
