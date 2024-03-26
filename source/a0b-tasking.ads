@@ -71,17 +71,35 @@ package A0B.Tasking is
 
 private
 
-   type Task_Control_Block_Access is access all Task_Control_Block;
+   type Task_Control_Block_Access is
+     access all Task_Control_Block with Storage_Size => 0;
+
+   type Suspension_Condition;
+
+   type Suspension_Condition_Access is
+     access all Suspension_Condition with Storage_Size => 0;
+
+   type Suspension_Condition is record
+      --  TCB  : Task_Control_Block_Access;
+      TCB  : System.Address;
+      Till : A0B.Types.Unsigned_64;
+      Next : System.Address;
+      --  Next : Lock_Condition_Access;
+   end record;
+
+   type Task_State is (Idle, Runnable, Stale);
 
    type Task_Control_Block is limited record
       Stack  : System.Address;
+      State  : Task_State;
       --  Stack  : System.Storage_Elements.Integer_Address; -- := 0;
       --  Id     : Integer                                 := 0;
       --  Stack  : System.Address := System.Null_Address;
       --  Unused : Boolean := True;
-      Time   : A0B.Types.Unsigned_64; --                             := 0;
+      Time : A0B.Types.Unsigned_64;
       --  Next   : Task_Control_Block_Access;
       Next   : System.Address;
+      --  Condition : Lock_Condition_Access;
    end record with Preelaborable_Initialization;
    --  State:
    --   - Idle     - special kind of task, run only there is no other tasks
@@ -94,11 +112,13 @@ private
    --   - wait for flag
    --   - timer event
 
-   procedure Reschedule;
+   function Next
+     (TCB : Task_Control_Block_Access) return Task_Control_Block_Access
+        with Inline_Always;
 
    Idle_Task_Control_Block : aliased Task_Control_Block;
 
-   Current_Task   : not null Task_Control_Block_Access :=
+   Current_Task : not null Task_Control_Block_Access :=
      Idle_Task_Control_Block'Access
        with Linker_Section => ".dtcm.data";
    --  Task_List_Head : Task_Control_Block_Access;

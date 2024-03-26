@@ -9,6 +9,7 @@ pragma Restrictions (No_Elaboration_Code);
 with A0B.ARMv7M.CMSIS;                use A0B.ARMv7M.CMSIS;
 with A0B.ARMv7M.System_Control_Block; use A0B.ARMv7M.System_Control_Block;
 with A0B.Tasking.Context_Switching;
+with A0B.Tasking.Scheduler;
 with A0B.Tasking.System_Timer;
 
 package body A0B.Tasking.Interrupt_Handling is
@@ -32,7 +33,7 @@ package body A0B.Tasking.Interrupt_Handling is
    begin
       Context_Switching.Save_Context;
       Set_BASEPRI (SVCall_Priority);
-      Reschedule;
+      Scheduler.Switch_Current_Task;
       Set_BASEPRI (0);
       Context_Switching.Restore_Context;
    end PendSV_Handler;
@@ -54,13 +55,10 @@ package body A0B.Tasking.Interrupt_Handling is
 
    procedure SysTick_Handler is
    begin
-      --  if Switch then
-         --  Switch   := False;
-         SCB.ICSR := (PENDSVSET => True, others => <>);
-         --  Request PendSV exception to switch context
-      --  end if;
-
       System_Timer.Overflow;
+
+      SCB.ICSR := (PENDSVSET => True, others => <>);
+      --  Request PendSV exception to switch context
    end SysTick_Handler;
 
 end A0B.Tasking.Interrupt_Handling;

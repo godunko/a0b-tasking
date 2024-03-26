@@ -25,10 +25,10 @@ package body A0B.Tasking is
 
    Next_Stack : System.Address;
 
-   function To_Priority_Value
-     (Item : Priority) return A0B.ARMv7M.Priority_Value is
-       (A0B.ARMv7M.Priority_Value
-         (Priority (A0B.ARMv7M.Priority_Value'Last) - Item));
+   --  function To_Priority_Value
+   --    (Item : Priority) return A0B.ARMv7M.Priority_Value is
+   --      (A0B.ARMv7M.Priority_Value
+   --        (Priority (A0B.ARMv7M.Priority_Value'Last) - Item));
    --  Conversion from abstract priority level to ARM priority value.
 
    estack : constant A0B.Types.Reserved_32
@@ -58,7 +58,8 @@ package body A0B.Tasking is
    begin
       --  Update task control block.
 
-      Current_Task.Time := Time_Stamp;
+      Current_Task.Time  := Time_Stamp;
+      Current_Task.State := Stale;
 
       --  Request PendVS exception. Do synchronization after modification of
       --  the register in the System Control Space to avoid side effects.
@@ -100,7 +101,9 @@ package body A0B.Tasking is
 
       Idle_Task_Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Idle_Thread'Access, Next_Stack);
-      Idle_Task_Control_Block.Next :=
+      Idle_Task_Control_Block.State := Idle;
+      Idle_Task_Control_Block.Time  := 0;
+      Idle_Task_Control_Block.Next  :=
         To_Address (Idle_Task_Control_Block'Access);
 
       Next_Stack :=
@@ -108,6 +111,16 @@ package body A0B.Tasking is
 
       System_Timer.Initialize_Timer (Use_Processor_Clock, Clock_Frequency);
    end Initialize;
+
+   ----------
+   -- Next --
+   ----------
+
+   function Next
+     (TCB : Task_Control_Block_Access) return Task_Control_Block_Access is
+   begin
+      return To_Pointer (TCB.Next);
+   end Next;
 
    ---------------------
    -- Register_Thread --
@@ -130,47 +143,16 @@ package body A0B.Tasking is
          Last_Task := To_Pointer (Last_Task.Next);
       end loop;
 
-      Control_Block.Next  := Last_Task.Next;
       Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Thread, Next_Stack);
-      Last_Task.Next      := To_Address (Control_Block'Unchecked_Access);
+      Control_Block.State := Runnable;
+      Control_Block.Time  := 0;
+      Control_Block.Next  := Last_Task.Next;
+
+      Last_Task.Next := To_Address (Control_Block'Unchecked_Access);
 
       Next_Stack := @ - Stack_Size;
    end Register_Thread;
-
-   ----------------
-   -- Reschedule --
-   ----------------
-
-   procedure Reschedule is
-      use type A0B.Types.Unsigned_64;
-
-      pragma Suppress (All_Checks);
-
-      Clock     : constant A0B.Types.Unsigned_64 := System_Timer.Clock;
-      Next_Task : Task_Control_Block_Access      := Current_Task;
-
-   begin
-      loop
-         Next_Task := To_Pointer (Next_Task.Next);
-
-         exit when Next_Task = Current_Task;
-
-         if Next_Task /= Idle_Task_Control_Block'Access then
-            --  exit when Next_Task.Time /= 0 and Next_Task.Time <= Clock;
-            exit when Next_Task.Time <= Clock;
-         end if;
-      end loop;
-
-      if Next_Task.Time /= 0 and Next_Task.Time > Clock then
-         Current_Task   := Idle_Task_Control_Block'Access;
-         --  Run idle task
-
-      else
-         Next_Task.Time := 0;
-         Current_Task   := Next_Task;
-      end if;
-   end Reschedule;
 
    ---------
    -- Run --
@@ -232,6 +214,8 @@ package body A0B.Tasking is
         (Template => "svc 0",
          Volatile => True);
       --  Call SVC to start first thread. It never returns.
+
+      raise Program_Error;
    end Run;
 
 end A0B.Tasking;
