@@ -17,6 +17,9 @@ package A0B.Tasking.System_Timer is
    function Clock return A0B.Types.Unsigned_64
      with Linker_Section => ".itcm.text";
 
+   function Tick_Base return A0B.Types.Unsigned_64
+     with Inline_Always;
+
    procedure Initialize_Timer
      (Use_Processor_Clock : Boolean;
       Clock_Frequency     : A0B.Types.Unsigned_32);

@@ -87,18 +87,47 @@ private
       --  Next : Lock_Condition_Access;
    end record;
 
-   type Task_State is (Idle, Runnable, Stale);
+   function TCB
+     (Self : Suspension_Condition_Access) return Task_Control_Block_Access;
+
+   procedure Initialize
+     (Self       : in out Suspension_Condition;
+      TCB        : not null Task_Control_Block_Access;
+      Time_Stamp : A0B.Types.Unsigned_64);
+
+   type Suspension_Condition_List is limited record
+      Head : System.Address;
+   end record;
+
+   function Is_Empty (Self : Suspension_Condition_List) return Boolean
+     with Inline_Always;
+
+   function Head
+     (Self : Suspension_Condition_List) return Suspension_Condition_Access
+        with Inline_Always;
+
+   function Next
+     (Self : not null Suspension_Condition_Access)
+      return Suspension_Condition_Access
+        with Inline_Always;
+
+   procedure Insert
+     (Self  : in out Suspension_Condition_List;
+      After : Suspension_Condition_Access;
+      Item  : not null Suspension_Condition_Access);
+
+   procedure Dequeue
+     (Self : in out Suspension_Condition_List;
+      Item : out Suspension_Condition_Access);
+
+   type Task_State is (Idle, Runnable, Blocked);
 
    type Task_Control_Block is limited record
-      Stack  : System.Address;
-      State  : Task_State;
-      --  Stack  : System.Storage_Elements.Integer_Address; -- := 0;
-      --  Id     : Integer                                 := 0;
-      --  Stack  : System.Address := System.Null_Address;
-      --  Unused : Boolean := True;
-      Time : A0B.Types.Unsigned_64;
-      --  Next   : Task_Control_Block_Access;
-      Next   : System.Address;
+      Stack : System.Address;
+      State : Task_State;
+      --  Time  : A0B.Types.Unsigned_64;
+      Next  : System.Address;
+      Timer : aliased Suspension_Condition;
       --  Condition : Lock_Condition_Access;
    end record with Preelaborable_Initialization;
    --  State:
@@ -115,6 +144,27 @@ private
    function Next
      (TCB : Task_Control_Block_Access) return Task_Control_Block_Access
         with Inline_Always;
+
+   type Task_Control_Block_List is limited record
+      Head : System.Address;
+   end record;
+
+   function Head
+     (Self : Task_Control_Block_List) return Task_Control_Block_Access
+        with Inline_Always;
+
+   procedure Insert
+     (Self  : in out Task_Control_Block_List;
+      After : Task_Control_Block_Access;
+      Item  : not null Task_Control_Block_Access);
+
+   procedure Enqueue
+     (Self : in out Task_Control_Block_List;
+      Item : not null Task_Control_Block_Access);
+
+   procedure Dequeue
+     (Self : in out Task_Control_Block_List;
+      Item : out Task_Control_Block_Access);
 
    Idle_Task_Control_Block : aliased Task_Control_Block;
 

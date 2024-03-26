@@ -19,6 +19,7 @@ with A0B.Types.GCC_Builtins;
 
 with A0B.Tasking.Context_Switching;
 with A0B.Tasking.Interrupt_Handling;
+with A0B.Tasking.Scheduler;
 with A0B.Tasking.System_Timer;
 
 package body A0B.Tasking is
@@ -37,18 +38,29 @@ package body A0B.Tasking is
    procedure Idle_Thread;
    --  Thread that run idle loop.
 
+   package Suspension_Condition_Conversions is
+     new System.Address_To_Access_Conversions (Suspension_Condition);
+
+   function To_Pointer
+     (Item : System.Address) return Suspension_Condition_Access is
+        (Suspension_Condition_Access
+           (Suspension_Condition_Conversions.To_Pointer (Item)));
+
+   function To_Address
+     (Item : Suspension_Condition_Access) return System.Address is
+        (Suspension_Condition_Conversions.To_Address
+           (Suspension_Condition_Conversions.Object_Pointer (Item)));
+
    package TCB_Conversion is
      new System.Address_To_Access_Conversions (Task_Control_Block);
 
-   function To_Address (Item : Task_Control_Block_Access) return System.Address is
-   begin
-      return TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item));
-   end To_Address;
+   function To_Address
+     (Item : Task_Control_Block_Access) return System.Address is
+        (TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item)));
 
-   function To_Pointer (Item : System.Address) return Task_Control_Block_Access is
-   begin
-      return Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item));
-   end To_Pointer;
+   function To_Pointer
+     (Item : System.Address) return Task_Control_Block_Access is
+        (Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item)));
 
    -----------------
    -- Delay_Until --
@@ -56,10 +68,11 @@ package body A0B.Tasking is
 
    procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64) is
    begin
+      Scheduler.Block_Until (Time_Stamp);
+
       --  Update task control block.
 
-      Current_Task.Time  := Time_Stamp;
-      Current_Task.State := Stale;
+      --  Current_Task.Time  := Time_Stamp;
 
       --  Request PendVS exception. Do synchronization after modification of
       --  the register in the System Control Space to avoid side effects.
@@ -68,6 +81,110 @@ package body A0B.Tasking is
       Data_Synchronization_Barrier;
       Instruction_Synchronization_Barrier;
    end Delay_Until;
+
+   -------------
+   -- Dequeue --
+   -------------
+
+   procedure Dequeue
+     (Self : in out Suspension_Condition_List;
+      Item : out Suspension_Condition_Access)
+   is
+      use type System.Address;
+
+   begin
+      if Self.Head = System.Null_Address then
+         Item := null;
+
+      else
+         Item      := To_Pointer (Self.Head);
+         Self.Head := Item.Next;
+      end if;
+   end Dequeue;
+
+   -------------
+   -- Dequeue --
+   -------------
+
+   procedure Dequeue
+     (Self : in out Task_Control_Block_List;
+      Item : out Task_Control_Block_Access)
+   is
+      use type System.Address;
+
+   begin
+      if Self.Head = System.Null_Address then
+         Item := null;
+
+      else
+         Item      := To_Pointer (Self.Head);
+         Self.Head := Item.Next;
+      end if;
+   end Dequeue;
+
+   -------------
+   -- Enqueue --
+   -------------
+
+   procedure Enqueue
+     (Self : in out Task_Control_Block_List;
+      Item : not null Task_Control_Block_Access)
+   is
+      use type System.Address;
+
+      Last : Task_Control_Block_Access := To_Pointer (Self.Head);
+
+   begin
+      if Self.Head = System.Null_Address then
+         Self.Head := To_Address (Item);
+         Item.Next := System.Null_Address;
+
+      else
+         loop
+            exit when Last.Next = System.Null_Address;
+
+            Last := To_Pointer (Last.Next);
+         end loop;
+
+         Last.Next := To_Address (Item);
+         Item.Next := System.Null_Address;
+      end if;
+   --     Previous : Task_Control_Block_Access := Head (Runnable_Tasks);
+
+   --  begin
+   --     if Previous = null then
+   --        Insert (Runnable_Tasks, After => null, Item => TCB);
+
+   --     else
+   --        loop
+   --           exit when Next (Previous) = null;
+
+   --           Previous := Next (Previous);
+   --        end loop;
+
+   --        Insert (Runnable_Tasks, After => Previous, Item => TCB);
+   --     end if;
+   end Enqueue;
+
+   ----------
+   -- Head --
+   ----------
+
+   function Head
+     (Self : Suspension_Condition_List) return Suspension_Condition_Access is
+   begin
+      return To_Pointer (Self.Head);
+   end Head;
+
+   ----------
+   -- Head --
+   ----------
+
+   function Head
+     (Self : Task_Control_Block_List) return Task_Control_Block_Access is
+   begin
+      return To_Pointer (Self.Head);
+   end Head;
 
    -----------------
    -- Idle_Thread --
@@ -79,6 +196,20 @@ package body A0B.Tasking is
          Wait_For_Interrupt;
       end loop;
    end Idle_Thread;
+
+   ----------------
+   -- Initialize --
+   ----------------
+
+   procedure Initialize
+     (Self       : in out Suspension_Condition;
+      TCB        : not null Task_Control_Block_Access;
+      Time_Stamp : A0B.Types.Unsigned_64) is
+   begin
+      Self.TCB  := To_Address (TCB);
+      Self.Till := Time_Stamp;
+      Self.Next := System.Null_Address;
+   end Initialize;
 
    ----------------
    -- Initialize --
@@ -102,15 +233,75 @@ package body A0B.Tasking is
       Idle_Task_Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Idle_Thread'Access, Next_Stack);
       Idle_Task_Control_Block.State := Idle;
-      Idle_Task_Control_Block.Time  := 0;
-      Idle_Task_Control_Block.Next  :=
-        To_Address (Idle_Task_Control_Block'Access);
+      --  Idle_Task_Control_Block.Time  := 0;
+      Idle_Task_Control_Block.Next  := System.Null_Address;
+      --    To_Address (Idle_Task_Control_Block'Access);
 
       Next_Stack :=
         @ - System.Storage_Elements.Storage_Offset (Stack_Size);
 
       System_Timer.Initialize_Timer (Use_Processor_Clock, Clock_Frequency);
    end Initialize;
+
+   ------------
+   -- Insert --
+   ------------
+
+   procedure Insert
+     (Self  : in out Suspension_Condition_List;
+      After : Suspension_Condition_Access;
+      Item  : not null Suspension_Condition_Access) is
+   begin
+      if After = null then
+         Item.Next := Self.Head;
+         Self.Head := To_Address (Item);
+
+      else
+         Item.Next  := After.Next;
+         After.Next := To_Address (Item);
+      end if;
+   end Insert;
+
+   ------------
+   -- Insert --
+   ------------
+
+   procedure Insert
+     (Self  : in out Task_Control_Block_List;
+      After : Task_Control_Block_Access;
+      Item  : not null Task_Control_Block_Access) is
+   begin
+      if After = null then
+         Item.Next := Self.Head;
+         Self.Head := To_Address (Item);
+
+      else
+         Item.Next  := After.Next;
+         After.Next := To_Address (Item);
+      end if;
+   end Insert;
+
+   --------------
+   -- Is_Empty --
+   --------------
+
+   function Is_Empty (Self : Suspension_Condition_List) return Boolean is
+      use type System.Address;
+
+   begin
+      return Self.Head = System.Null_Address;
+   end Is_Empty;
+
+   ----------
+   -- Next --
+   ----------
+
+   function Next
+     (Self : not null Suspension_Condition_Access)
+      return Suspension_Condition_Access is
+   begin
+      return To_Pointer (Self.Next);
+   end Next;
 
    ----------
    -- Next --
@@ -133,25 +324,28 @@ package body A0B.Tasking is
    is
       use type System.Address;
 
-      Last_Task : Task_Control_Block_Access := Idle_Task_Control_Block'Access;
+      --  Last_Task : Task_Control_Block_Access := Idle_Task_Control_Block'Access;
 
    begin
-      loop
-         exit when Last_Task.Next
-                     = To_Address (Idle_Task_Control_Block'Access);
+      --  loop
+      --     exit when Last_Task.Next
+      --                 = To_Address (Idle_Task_Control_Block'Access);
 
-         Last_Task := To_Pointer (Last_Task.Next);
-      end loop;
+      --     Last_Task := To_Pointer (Last_Task.Next);
+      --  end loop;
 
       Control_Block.Stack :=
         Context_Switching.Initialize_Stack (Thread, Next_Stack);
       Control_Block.State := Runnable;
-      Control_Block.Time  := 0;
-      Control_Block.Next  := Last_Task.Next;
+      --  Control_Block.Time  := 0;
+      Control_Block.Next  := System.Null_Address;
+      --  Control_Block.Next  := Last_Task.Next;
 
-      Last_Task.Next := To_Address (Control_Block'Unchecked_Access);
+      --  Last_Task.Next := To_Address (Control_Block'Unchecked_Access);
 
       Next_Stack := @ - Stack_Size;
+
+      Scheduler.Register_Task (Control_Block'Unchecked_Access);
    end Register_Thread;
 
    ---------
@@ -217,5 +411,15 @@ package body A0B.Tasking is
 
       raise Program_Error;
    end Run;
+
+   ---------
+   -- TCB --
+   ---------
+
+   function TCB
+     (Self : Suspension_Condition_Access) return Task_Control_Block_Access is
+   begin
+      return To_Pointer (Self.TCB);
+   end TCB;
 
 end A0B.Tasking;

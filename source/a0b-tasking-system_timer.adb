@@ -131,4 +131,13 @@ package body A0B.Tasking.System_Timer is
       Enable_Interrupts;
    end Overflow;
 
+   ----------------
+   -- Tick_Clock --
+   ----------------
+
+   function Tick_Base return A0B.Types.Unsigned_64 is
+   begin
+      return Overflow_Counter;
+   end Tick_Base;
+
 end A0B.Tasking.System_Timer;
