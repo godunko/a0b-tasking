@@ -10,7 +10,9 @@ pragma Restrictions (No_Elaboration_Code);
 
 with A0B.Types;
 
-package A0B.Tasking.System_Timer is
+package A0B.Tasking.System_Timer
+  with Preelaborate
+is
 
    pragma Elaborate_Body;
 

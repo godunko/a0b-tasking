@@ -6,7 +6,9 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-private package A0B.Tasking.Interrupt_Handling is
+private package A0B.Tasking.Interrupt_Handling
+  with Preelaborate
+is
 
    pragma Elaborate_Body;
 

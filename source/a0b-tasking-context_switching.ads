@@ -12,7 +12,9 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
-private package A0B.Tasking.Context_Switching is
+private package A0B.Tasking.Context_Switching
+  with Preelaborate
+is
 
    function Initialize_Stack
      (Thread : Task_Subprogram;

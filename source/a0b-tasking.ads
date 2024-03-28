@@ -12,7 +12,9 @@ with System.Storage_Elements;
 private with A0B.ARMv7M;
 with A0B.Types;
 
-package A0B.Tasking is
+package A0B.Tasking
+  with Preelaborate
+is
 
    use type A0B.Types.Unsigned_32;
 
@@ -60,7 +62,8 @@ package A0B.Tasking is
 
    type Task_Subprogram is access procedure;
 
-   type Task_Control_Block is limited private;
+   type Task_Control_Block is limited private
+     with Preelaborable_Initialization;
 
    procedure Register_Thread
      (Control_Block : aliased in out Task_Control_Block;
@@ -78,7 +81,8 @@ private
       TCB  : System.Address;
       Till : A0B.Types.Unsigned_64;
       Next : System.Address;
-   end record;
+   end record
+     with Preelaborable_Initialization;
 
    type Suspension_Condition_Access is
      access all Suspension_Condition with Storage_Size => 0;
@@ -90,7 +94,7 @@ private
       State : Task_State;
       Next  : System.Address;
       Timer : aliased Suspension_Condition;
-   end record with Preelaborable_Initialization;
+   end record;
    --  State:
    --   - Idle     - special kind of task, run only there is no other tasks
    --   - Runnable - can be run
