@@ -10,9 +10,7 @@ with A0B.Tasking.System_Timer;
 
 package body Ada.Real_Time is
 
-   --  function "+" (Left : Time_Span; Right : Time) return Time;
-   --  function "-" (Left : Time; Right : Time_Span) return Time;
-   --  function "-" (Left : Time; Right : Time) return Time_Span;
+   use type A0B.Types.Unsigned_64;
 
    --  function "<" (Left, Right : Time) return Boolean;
    --  function "<="(Left, Right : Time) return Boolean;
@@ -37,13 +35,15 @@ package body Ada.Real_Time is
    --  function To_Duration (TS : Time_Span) return Duration;
    --  function To_Time_Span (D : Duration) return Time_Span;
 
-   --  function Nanoseconds  (NS : Integer) return Time_Span;
-   --  function Seconds      (S  : Integer) return Time_Span;
-   --  function Minutes      (M  : Integer) return Time_Span;
-
    --  procedure Split(T : in Time; SC : out Seconds_Count;
    --  TS : out Time_Span);
    --  function Time_Of(SC : Seconds_Count; TS : Time_Span) return Time;
+
+   Nanosecond_Units  : constant := 1;
+   Microsecond_Units : constant := Nanosecond_Units * 1_000;
+   Millisecond_Units : constant := Microsecond_Units * 1_000;
+   Second_Units      : constant := Millisecond_Units * 1_000;
+   Minute_Units      : constant := Second_Units * 60;
 
    ---------
    -- "+" --
@@ -51,8 +51,40 @@ package body Ada.Real_Time is
 
    function "+" (Left : Time; Right : Time_Span) return Time is
    begin
-      return Left + Time (Right);
+      return
+        Time (A0B.Types.Unsigned_64 (Left) + A0B.Types.Unsigned_64 (Right));
    end "+";
+
+   ---------
+   -- "+" --
+   ---------
+
+   function "+" (Left : Time_Span; Right : Time) return Time is
+   begin
+      return
+        Time (A0B.Types.Unsigned_64 (Left) + A0B.Types.Unsigned_64 (Right));
+   end "+";
+
+   ---------
+   -- "-" --
+   ---------
+
+   function "-" (Left : Time; Right : Time_Span) return Time is
+   begin
+      return
+        Time (A0B.Types.Unsigned_64 (Left) - A0B.Types.Unsigned_64 (Right));
+   end "-";
+
+   ---------
+   -- "-" --
+   ---------
+
+   function "-" (Left : Time; Right : Time) return Time_Span is
+   begin
+      return
+        Time_Span
+          (A0B.Types.Unsigned_64 (Left) - A0B.Types.Unsigned_64 (Right));
+   end "-";
 
    -----------
    -- Clock --
@@ -63,14 +95,14 @@ package body Ada.Real_Time is
       return Ada.Real_Time.Time (A0B.Tasking.System_Timer.Clock);
    end Clock;
 
-   --   ------------------
-   --   -- Microseconds --
-   --   ------------------
+   ------------------
+   -- Microseconds --
+   ------------------
 
-   --   function Microseconds (US : Integer) return Time_Span is
-   --   begin
-   --      return US * 1;
-   --   end Microseconds;
+   function Microseconds (US : Integer) return Time_Span is
+   begin
+      return Time_Span (A0B.Types.Unsigned_64 (US) * Microsecond_Units);
+   end Microseconds;
 
    ------------------
    -- Milliseconds --
@@ -78,7 +110,34 @@ package body Ada.Real_Time is
 
    function Milliseconds (MS : Integer) return Time_Span is
    begin
-      return Time_Span (MS) * 1_000_000;
+      return Time_Span (A0B.Types.Unsigned_64 (MS) * Millisecond_Units);
    end Milliseconds;
+
+   -------------
+   -- Minutes --
+   -------------
+
+   function Minutes (M : Integer) return Time_Span is
+   begin
+      return Time_Span (A0B.Types.Unsigned_64 (M) * Minute_Units);
+   end Minutes;
+
+   -----------------
+   -- Nanoseconds --
+   -----------------
+
+   function Nanoseconds (NS : Integer) return Time_Span is
+   begin
+      return Time_Span (A0B.Types.Unsigned_64 (NS) * Nanosecond_Units);
+   end Nanoseconds;
+
+   -------------
+   -- Seconds --
+   -------------
+
+   function Seconds (S : Integer) return Time_Span is
+   begin
+      return Time_Span (A0B.Types.Unsigned_64 (S) * Second_Units);
+   end Seconds;
 
 end Ada.Real_Time;
