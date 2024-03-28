@@ -2,9 +2,10 @@
 pragma Restrictions (No_Elaboration_Code);
 
 private with A0B.Types;
---  pragma Style_Checks (Off, A0B.Types);
 
-package Ada.Real_Time is
+package Ada.Real_Time
+--  with Nonblocking, Global => in out synchronized
+is
 
    type Time is private;
    Time_First : constant Time;
