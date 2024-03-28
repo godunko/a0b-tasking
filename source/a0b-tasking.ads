@@ -158,13 +158,13 @@ private
       After : Task_Control_Block_Access;
       Item  : not null Task_Control_Block_Access);
 
-   procedure Enqueue
-     (Self : in out Task_Control_Block_List;
-      Item : not null Task_Control_Block_Access);
+  --   procedure Enqueue
+  --     (Self : in out Task_Control_Block_List;
+  --      Item : not null Task_Control_Block_Access);
 
-   procedure Dequeue
-     (Self : in out Task_Control_Block_List;
-      Item : out Task_Control_Block_Access);
+  --   procedure Dequeue
+  --     (Self : in out Task_Control_Block_List;
+  --      Item : out Task_Control_Block_Access);
 
    Idle_Task_Control_Block : aliased Task_Control_Block;
 

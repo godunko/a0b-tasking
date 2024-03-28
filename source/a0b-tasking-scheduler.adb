@@ -6,6 +6,8 @@
 
 pragma Restrictions (No_Elaboration_Code);
 
+with System.Address_To_Access_Conversions;
+
 with A0B.ARMv7M.CMSIS; use A0B.ARMv7M.CMSIS;
 with A0B.Tasking.System_Timer;
 
@@ -14,6 +16,19 @@ package body A0B.Tasking.Scheduler is
    Runnable_Tasks : Task_Control_Block_List;
    --  Blocked_Tasks  : Task_Control_Block_List;
    Waiting        : Suspension_Condition_List;
+
+   package Runnable_Queue is
+
+      use type System.Address;
+
+      procedure Enqueue (TCB : not null Task_Control_Block_Access)
+        with Pre => TCB.State = Runnable and TCB.Next = System.Null_Address;
+      --  Enqueue given task to the end of the queue.
+
+      procedure Dequeue (TCB : out Task_Control_Block_Access);
+      --  Dequeue first task in the queue.
+
+   end Runnable_Queue;
 
    -----------------
    -- Block_Until --
@@ -55,7 +70,7 @@ package body A0B.Tasking.Scheduler is
    --     Previous : Task_Control_Block_Access := Head (Runnable_Tasks);
 
    begin
-      Enqueue (Runnable_Tasks, TCB);
+      Runnable_Queue.Enqueue (TCB);
    --     if Previous = null then
    --        Insert (Runnable_Tasks, After => null, Item => TCB);
 
@@ -69,6 +84,82 @@ package body A0B.Tasking.Scheduler is
    --        Insert (Runnable_Tasks, After => Previous, Item => TCB);
    --     end if;
    end Register_Task;
+
+   --------------------
+   -- Runnable_Queue --
+   --------------------
+
+   package body Runnable_Queue is
+
+      package TCB_Conversion is
+        new System.Address_To_Access_Conversions (Task_Control_Block);
+
+      function To_Address
+        (Item : Task_Control_Block_Access) return System.Address is
+           (TCB_Conversion.To_Address (TCB_Conversion.Object_Pointer (Item)));
+
+      function To_Pointer
+        (Item : System.Address) return Task_Control_Block_Access is
+           (Task_Control_Block_Access (TCB_Conversion.To_Pointer (Item)));
+
+      Head : Task_Control_Block_Access;
+      Tail : Task_Control_Block_Access;
+
+      -------------
+      -- Dequeue --
+      -------------
+
+      procedure Dequeue (TCB : out Task_Control_Block_Access) is
+      begin
+         if Head = null then
+            TCB := null;
+
+         else
+            TCB  := Head;
+            Head := To_Pointer (TCB.Next);
+            Tail := (if Head /= null then Tail else null);
+
+            TCB.Next := System.Null_Address;
+         end if;
+      end Dequeue;
+
+      -------------
+      -- Enqueue --
+      -------------
+
+      procedure Enqueue (TCB : not null Task_Control_Block_Access) is
+         Last : Task_Control_Block_Access := Head;
+
+      begin
+         if Head = null then
+            Head := TCB;
+            Tail := TCB;
+
+         else
+            declare
+               pragma Suppress (Access_Check);
+            begin
+               Tail.Next := To_Address (TCB);
+               Tail      := TCB;
+            end;
+         end if;
+         --  if Self.Head = System.Null_Address then
+         --     Self.Head := To_Address (Item);
+         --     Item.Next := System.Null_Address;
+
+         --  else
+         --     loop
+         --        exit when Last.Next = System.Null_Address;
+
+         --        Last := To_Pointer (Last.Next);
+         --     end loop;
+
+         --     Last.Next := To_Address (Item);
+         --     Item.Next := System.Null_Address;
+         --  end if;
+      end Enqueue;
+
+   end Runnable_Queue;
 
    -------------------------
    -- Switch_Current_Task --
@@ -108,10 +199,10 @@ package body A0B.Tasking.Scheduler is
       --     Current_Task := Next_Task;
       --  end if;
 
-      Dequeue (Runnable_Tasks, Item);
+      Runnable_Queue.Dequeue (Item);
 
       if Current_Task.State = Runnable then
-         Enqueue (Runnable_Tasks, Item);
+         Runnable_Queue.Enqueue (Item);
       end if;
 
       if Item = null then
@@ -140,7 +231,7 @@ package body A0B.Tasking.Scheduler is
 
          Dequeue (Waiting, Item);
          TCB (Item).all.State := Runnable;
-         Enqueue (Runnable_Tasks, TCB   (Item));
+         Runnable_Queue.Enqueue (TCB (Item));
          --  if Item.Till <= Time_Stamp then
          --     null;
          --  end if;
