@@ -145,27 +145,6 @@ private
      (TCB : Task_Control_Block_Access) return Task_Control_Block_Access
         with Inline_Always;
 
-   type Task_Control_Block_List is limited record
-      Head : System.Address;
-   end record;
-
-   function Head
-     (Self : Task_Control_Block_List) return Task_Control_Block_Access
-        with Inline_Always;
-
-   procedure Insert
-     (Self  : in out Task_Control_Block_List;
-      After : Task_Control_Block_Access;
-      Item  : not null Task_Control_Block_Access);
-
-  --   procedure Enqueue
-  --     (Self : in out Task_Control_Block_List;
-  --      Item : not null Task_Control_Block_Access);
-
-  --   procedure Dequeue
-  --     (Self : in out Task_Control_Block_List;
-  --      Item : out Task_Control_Block_Access);
-
    Idle_Task_Control_Block : aliased Task_Control_Block;
 
    Current_Task : not null Task_Control_Block_Access :=

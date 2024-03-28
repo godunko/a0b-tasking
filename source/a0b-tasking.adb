@@ -102,86 +102,12 @@ package body A0B.Tasking is
       end if;
    end Dequeue;
 
-   -------------
-   -- Dequeue --
-   -------------
-
-   procedure Dequeue
-     (Self : in out Task_Control_Block_List;
-      Item : out Task_Control_Block_Access)
-   is
-      use type System.Address;
-
-   begin
-      if Self.Head = System.Null_Address then
-         Item := null;
-
-      else
-         Item      := To_Pointer (Self.Head);
-         Self.Head := Item.Next;
-      end if;
-   end Dequeue;
-
-   -------------
-   -- Enqueue --
-   -------------
-
-   procedure Enqueue
-     (Self : in out Task_Control_Block_List;
-      Item : not null Task_Control_Block_Access)
-   is
-      use type System.Address;
-
-      Last : Task_Control_Block_Access := To_Pointer (Self.Head);
-
-   begin
-      if Self.Head = System.Null_Address then
-         Self.Head := To_Address (Item);
-         Item.Next := System.Null_Address;
-
-      else
-         loop
-            exit when Last.Next = System.Null_Address;
-
-            Last := To_Pointer (Last.Next);
-         end loop;
-
-         Last.Next := To_Address (Item);
-         Item.Next := System.Null_Address;
-      end if;
-   --     Previous : Task_Control_Block_Access := Head (Runnable_Tasks);
-
-   --  begin
-   --     if Previous = null then
-   --        Insert (Runnable_Tasks, After => null, Item => TCB);
-
-   --     else
-   --        loop
-   --           exit when Next (Previous) = null;
-
-   --           Previous := Next (Previous);
-   --        end loop;
-
-   --        Insert (Runnable_Tasks, After => Previous, Item => TCB);
-   --     end if;
-   end Enqueue;
-
    ----------
    -- Head --
    ----------
 
    function Head
      (Self : Suspension_Condition_List) return Suspension_Condition_Access is
-   begin
-      return To_Pointer (Self.Head);
-   end Head;
-
-   ----------
-   -- Head --
-   ----------
-
-   function Head
-     (Self : Task_Control_Block_List) return Task_Control_Block_Access is
    begin
       return To_Pointer (Self.Head);
    end Head;
@@ -251,25 +177,6 @@ package body A0B.Tasking is
      (Self  : in out Suspension_Condition_List;
       After : Suspension_Condition_Access;
       Item  : not null Suspension_Condition_Access) is
-   begin
-      if After = null then
-         Item.Next := Self.Head;
-         Self.Head := To_Address (Item);
-
-      else
-         Item.Next  := After.Next;
-         After.Next := To_Address (Item);
-      end if;
-   end Insert;
-
-   ------------
-   -- Insert --
-   ------------
-
-   procedure Insert
-     (Self  : in out Task_Control_Block_List;
-      After : Task_Control_Block_Access;
-      Item  : not null Task_Control_Block_Access) is
    begin
       if After = null then
          Item.Next := Self.Head;

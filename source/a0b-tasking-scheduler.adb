@@ -9,13 +9,10 @@ pragma Restrictions (No_Elaboration_Code);
 with System.Address_To_Access_Conversions;
 
 with A0B.ARMv7M.CMSIS; use A0B.ARMv7M.CMSIS;
-with A0B.Tasking.System_Timer;
 
 package body A0B.Tasking.Scheduler is
 
-   Runnable_Tasks : Task_Control_Block_List;
-   --  Blocked_Tasks  : Task_Control_Block_List;
-   Waiting        : Suspension_Condition_List;
+   Waiting : Suspension_Condition_List;
 
    package Runnable_Queue is
 
