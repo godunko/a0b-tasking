@@ -74,61 +74,22 @@ private
    type Task_Control_Block_Access is
      access all Task_Control_Block with Storage_Size => 0;
 
-   type Suspension_Condition;
-
-   type Suspension_Condition_Access is
-     access all Suspension_Condition with Storage_Size => 0;
-
    type Suspension_Condition is record
-      --  TCB  : Task_Control_Block_Access;
       TCB  : System.Address;
       Till : A0B.Types.Unsigned_64;
       Next : System.Address;
-      --  Next : Lock_Condition_Access;
    end record;
 
-   function TCB
-     (Self : Suspension_Condition_Access) return Task_Control_Block_Access;
-
-   procedure Initialize
-     (Self       : in out Suspension_Condition;
-      TCB        : not null Task_Control_Block_Access;
-      Time_Stamp : A0B.Types.Unsigned_64);
-
-   type Suspension_Condition_List is limited record
-      Head : System.Address;
-   end record;
-
-   function Is_Empty (Self : Suspension_Condition_List) return Boolean
-     with Inline_Always;
-
-   function Head
-     (Self : Suspension_Condition_List) return Suspension_Condition_Access
-        with Inline_Always;
-
-   function Next
-     (Self : not null Suspension_Condition_Access)
-      return Suspension_Condition_Access
-        with Inline_Always;
-
-   procedure Insert
-     (Self  : in out Suspension_Condition_List;
-      After : Suspension_Condition_Access;
-      Item  : not null Suspension_Condition_Access);
-
-   procedure Dequeue
-     (Self : in out Suspension_Condition_List;
-      Item : out Suspension_Condition_Access);
+   type Suspension_Condition_Access is
+     access all Suspension_Condition with Storage_Size => 0;
 
    type Task_State is (Idle, Runnable, Blocked);
 
    type Task_Control_Block is limited record
       Stack : System.Address;
       State : Task_State;
-      --  Time  : A0B.Types.Unsigned_64;
       Next  : System.Address;
       Timer : aliased Suspension_Condition;
-      --  Condition : Lock_Condition_Access;
    end record with Preelaborable_Initialization;
    --  State:
    --   - Idle     - special kind of task, run only there is no other tasks
@@ -140,10 +101,6 @@ private
    --   - wait for system's interrupt
    --   - wait for flag
    --   - timer event
-
-   function Next
-     (TCB : Task_Control_Block_Access) return Task_Control_Block_Access
-        with Inline_Always;
 
    Idle_Task_Control_Block : aliased Task_Control_Block;
 

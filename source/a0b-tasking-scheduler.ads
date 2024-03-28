@@ -8,7 +8,7 @@ pragma Restrictions (No_Elaboration_Code);
 
 private package A0B.Tasking.Scheduler is
 
-   procedure Register_Task (TCB : not null Task_Control_Block_Access)
+   procedure Run_Task (TCB : not null Task_Control_Block_Access)
      with Pre => TCB.State = Runnable;
    --  Register task. Task must be in Runnable state.
 
