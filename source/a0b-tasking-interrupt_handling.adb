@@ -58,7 +58,7 @@ package body A0B.Tasking.Interrupt_Handling is
       System_Timer.Overflow;
       Scheduler.System_Timer_Tick (System_Timer.Tick_Base);
 
-      SCB.ICSR := (PENDSVSET => True, others => <>);
+      Request_PendSV;
       --  Request PendSV exception to switch context
    end SysTick_Handler;
 

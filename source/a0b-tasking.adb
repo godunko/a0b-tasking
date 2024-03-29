@@ -43,18 +43,11 @@ package body A0B.Tasking is
 
    procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64) is
    begin
-      Scheduler.Block_Until (Time_Stamp);
+      Scheduler.Suspend_Until (Time_Stamp);
+      --  XXX Check for Time_Stamp in the past need to be added.
 
-      --  Update task control block.
-
-      --  Current_Task.Time  := Time_Stamp;
-
-      --  Request PendVS exception. Do synchronization after modification of
-      --  the register in the System Control Space to avoid side effects.
-
-      SCB.ICSR := (PENDSVSET => True, others => <>);
-      Data_Synchronization_Barrier;
-      Instruction_Synchronization_Barrier;
+      Request_PendSV;
+      --  Request PendVS exception.
    end Delay_Until;
 
    -----------------
@@ -120,6 +113,20 @@ package body A0B.Tasking is
       Scheduler.Run_Task (Control_Block'Unchecked_Access);
    end Register_Thread;
 
+   --------------------
+   -- Request_PendSV --
+   --------------------
+
+   procedure Request_PendSV is
+   begin
+      --  Request PendVS exception. Do synchronization after modification of
+      --  the register in the System Control Space to avoid side effects.
+
+      SCB.ICSR := (PENDSVSET => True, others => <>);
+      Data_Synchronization_Barrier;
+      Instruction_Synchronization_Barrier;
+   end Request_PendSV;
+
    ---------
    -- Run --
    ---------
@@ -183,5 +190,28 @@ package body A0B.Tasking is
 
       raise Program_Error;
    end Run;
+
+   ------------------------
+   -- Suspend_Until_True --
+   ------------------------
+
+   procedure Suspend_Until_True (SO : aliased in out Suspension_Object) is
+   begin
+      Scheduler.Suspend_Until (SO);
+
+      Request_PendSV;
+      --  Request PendVS exception.
+   end Suspend_Until_True;
+
+   ---------------------------------------
+   -- Suspend_Until_True_Or_Delay_Until --
+   ---------------------------------------
+
+   --  procedure Suspend_Until_True_Or_Delay_Until
+   --    (SO   : in out Suspension_Object;
+   --     Till : A0B.Types.Unsigned_64) is
+   --  begin
+   --     null;
+   --  end Suspend_Until_True_Or_Delay_Until;
 
 end A0B.Tasking;

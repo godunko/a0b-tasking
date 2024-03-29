@@ -70,30 +70,42 @@ is
       Thread        : Task_Subprogram;
       Stack_Size    : System.Storage_Elements.Storage_Count);
 
-   procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64);
+   procedure Delay_Until (Time_Stamp : A0B.Types.Unsigned_64)
+     with Inline_Always;
+
+   type Suspension_Object is limited private
+     with Preelaborable_Initialization;
+
+   procedure Suspend_Until_True (SO : aliased in out Suspension_Object)
+     with Inline_Always;
+
+  --   procedure Suspend_Until_True_Or_Delay_Until
+  --     (SO   : in out Suspension_Object;
+  --      Till : A0B.Types.Unsigned_64);
 
 private
 
    type Task_Control_Block_Access is
      access all Task_Control_Block with Storage_Size => 0;
 
-   type Suspension_Condition is record
+   type Timer_Suspension_Object is record
       TCB  : System.Address;
       Till : A0B.Types.Unsigned_64;
       Next : System.Address;
    end record
      with Preelaborable_Initialization;
 
-   type Suspension_Condition_Access is
-     access all Suspension_Condition with Storage_Size => 0;
+   type Timer_Suspension_Object_Access is
+     access all Timer_Suspension_Object with Storage_Size => 0;
 
    type Task_State is (Idle, Runnable, Blocked);
 
    type Task_Control_Block is limited record
-      Stack : System.Address;
-      State : Task_State;
-      Next  : System.Address;
-      Timer : aliased Suspension_Condition;
+      Stack      : System.Address;
+      State      : Task_State;
+      Next       : System.Address;
+      Timer      : aliased Timer_Suspension_Object;
+      Suspension : System.Address;
    end record;
    --  State:
    --   - Idle     - special kind of task, run only there is no other tasks
@@ -106,6 +118,15 @@ private
    --   - wait for flag
    --   - timer event
 
+   type Suspension_Object is limited record
+      TCB   : System.Address;
+      State : Boolean;
+      --  Next  : System.Address;
+   end record;
+
+   type Suspension_Object_Access is access all Suspension_Object
+     with Storage_Size => 0;
+
    Idle_Task_Control_Block : aliased Task_Control_Block;
 
    Current_Task : not null Task_Control_Block_Access :=
@@ -117,5 +138,8 @@ private
    SysTick_Priority : constant A0B.ARMv7M.Priority_Value := 255;
    SVCall_Priority  : constant A0B.ARMv7M.Priority_Value := 127;
    --  Priority values of PendSV, SysTick and SVCall exceptions.
+
+   procedure Request_PendSV;
+   --  Request Pend_SV exception.
 
 end A0B.Tasking;

@@ -19,6 +19,7 @@ project A0B_Tasking_ARMv7M is
       for Switches ("Ada") use A0B_Common.Compiler_Switches_Ada;
       for Switches ("a-reatim.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
       for Switches ("a-retide.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
+      for Switches ("a-sytaco.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
    end Compiler;
 
    package Naming is
