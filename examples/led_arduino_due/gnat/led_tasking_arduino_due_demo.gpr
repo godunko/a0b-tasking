@@ -1,3 +1,9 @@
+--
+--  Copyright (C) 2024, Vadim Godunko <vgodunko@gmail.com>
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
 with "arduino_due_startup.gpr";
 with "a0b_tasking_armv7m.gpr";
 with "../config/led_tasking_arduino_due_demo_config.gpr";
@@ -7,7 +13,7 @@ project LED_Tasking_Arduino_Due_Demo is
    for Target use Arduino_Due_Startup'Target;
    for Runtime use Arduino_Due_Startup'Runtime;
 
-   for Source_Dirs use ("../source", "../config/");
+   for Source_Dirs use ("../source", "../config/", "../../led_common");
    for Object_Dir use "../.objs/led_arduino_due_demo/" & LED_Tasking_Arduino_Due_Demo_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
    for Exec_Dir use "../bin";

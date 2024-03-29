@@ -1,3 +1,9 @@
+--
+--  Copyright (C) 2024, Vadim Godunko <vgodunko@gmail.com>
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
 with "fk723m1_zgt6_startup.gpr";
 with "a0b_tasking_armv7m.gpr";
 with "../config/led_tasking_fk723m1_demo_config.gpr";
@@ -7,7 +13,7 @@ project LED_Tasking_FK723M1_Demo is
    for Target use FK723M1_ZGT6_Startup'Target;
    for Runtime use FK723M1_ZGT6_Startup'Runtime;
 
-   for Source_Dirs use ("../source", "../config/");
+   for Source_Dirs use ("../source", "../config/", "../../led_common");
    for Object_Dir use "../.objs/led_tasking_fk723m1_demo_config/" & LED_Tasking_FK723M1_Demo_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
    for Exec_Dir use "../bin";
