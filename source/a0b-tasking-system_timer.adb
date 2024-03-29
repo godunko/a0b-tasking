@@ -17,15 +17,15 @@ package body A0B.Tasking.System_Timer is
 
    One_Millisecond : constant := 1_000_000;
 
-   Overflow_Counter  : A0B.Types.Unsigned_64 := 0
-     with Volatile, Linker_Section => ".dtcm.data";
+   Overflow_Counter  : A0B.Types.Unsigned_64 := 0;
+   --    with Volatile, Linker_Section => ".dtcm.data";
    --  Counter of the SysTick timer overflows multiplied by 1_000, thus it is
    --  base monotonic time for current tick in microseconds.
 
-   Millisecond_Ticks : A0B.Types.Unsigned_32
-     with Linker_Section => ".dtcm.data";
-   Microsecond_Ticks : A0B.Types.Unsigned_32
-     with Linker_Section => ".dtcm.data";
+   Millisecond_Ticks : A0B.Types.Unsigned_32;
+   --    with Linker_Section => ".dtcm.data";
+   Microsecond_Ticks : A0B.Types.Unsigned_32;
+   --    with Linker_Section => ".dtcm.data";
    --  Number of the timer's ticks in one microsecond.
 
    -----------

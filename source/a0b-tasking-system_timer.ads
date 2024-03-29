@@ -16,8 +16,8 @@ is
 
    pragma Elaborate_Body;
 
-   function Clock return A0B.Types.Unsigned_64
-     with Linker_Section => ".itcm.text";
+   function Clock return A0B.Types.Unsigned_64;
+   --   with Linker_Section => ".itcm.text";
 
    function Tick_Base return A0B.Types.Unsigned_64
      with Inline_Always;
@@ -30,8 +30,8 @@ is
    procedure Enable_Timer;
    --  Enable SysTick timer and interrupt.
 
-   procedure Overflow
-     with Linker_Section => ".itcm.text";
+   procedure Overflow;
+   --   with Linker_Section => ".itcm.text";
    --  Handle timer's overflow event.
 
 end A0B.Tasking.System_Timer;
