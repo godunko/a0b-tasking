@@ -14,4 +14,3 @@ a0b_tasking = "*"
 light_stm32f4disco = "*"
 [[pins]]
 a0b_tasking = { path='../..' }
-light_stm32f4disco = { path='../../../light-startup' }

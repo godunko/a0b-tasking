@@ -10,10 +10,10 @@ with LED_Blink;
 
 procedure LED_Tasking_STM32F4DISCO_Demo is
 begin
-   A0B.Tasking.Initialize (16#200#, True, 4_000_000);
+   A0B.Tasking.Initialize (16#200#, True, 168_000_000);
    --  512 bytes of the master stack are enough for this simple application.
    --  Use CPU clock as source for SysTick timer
-   --  STM32F4 CPU runs at ~4 MHz internal OSC right after start
+   --  STM32F4 CPU runs at 168 (max)
 
    LED_Blink.Initialize;
    --  Initialize tasks.
