@@ -1,0 +1,16 @@
+name = "led_tasking_stm32f4disco_demo"
+description = "A0B LED Blink Tasking Demo for STM32F4DISCOVERY  Board"
+version = "0.1.0"
+
+authors = ["Yuri Veretelnikov"]
+maintainers = ["Yuri Veretelnikov <yuri.veretelnikov@gmail.com>"]
+maintainers-logins = ["meowthsli"]
+
+executables = ["led_tasking_stm32f4disco_demo"]
+project-files = ["gnat/led_tasking_stm32f4disco_demo.gpr"]
+
+[[depends-on]]
+a0b_tasking = "*"
+light_stm32f4disco = "*"
+[[pins]]
+a0b_tasking = { path='../..' }

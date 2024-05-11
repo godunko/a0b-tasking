@@ -16,7 +16,14 @@ project A0B_Tasking_ARMv7M is
    for Object_Dir use "../.objs/" & A0B_Common.Object_Dir_Suffix;
 
    package Compiler is
-      for Switches ("Ada") use A0B_Common.Compiler_Switches_Ada;
+      case A0B_ARMv7M.FPU_Extension is
+         when "VFPv4" =>
+            for Switches ("Ada") use A0B_Common.Compiler_Switches_Ada & ("-mcpu=cortex-m4",
+               "-mfloat-abi=softfp",
+               "-mfpu=fpv4-sp-d16");
+         when others =>
+            for Switches ("Ada") use A0B_Common.Compiler_Switches_Ada;
+      end case;
       for Switches ("a-reatim.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
       for Switches ("a-retide.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
       for Switches ("a-sytaco.adb") use A0B_Common.Compiler_Switches_Ada & "-gnatg";
